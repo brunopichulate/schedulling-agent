@@ -1,0 +1,34 @@
+[project]
+name = "endeavor-ai"
+version = "0.1.0"
+description = "Endeavor AI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "agno>=2.4.7",
+    "openai>=2.16.0",
+    "python-dotenv>=1.2.1",
+]
+
+[dependency-groups]
+dev = [
+    "gradio>=6.5.1",
+    "langfuse>=3.12.1",
+    "openinference-instrumentation-agno>=0.1.27",
+    "opentelemetry-exporter-otlp>=1.39.1",
+    "opentelemetry-sdk>=1.39.1",
+    "pytest>=9.0.2",
+    "ruff>=0.14.14",
+]
+
+[tool.ruff]
+indent-width = 2
+line-length = 79
+
+[tool.ruff.lint.flake8-quotes]
+avoid-escape = false
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
