@@ -1,25 +1,40 @@
 from agno.workflow import Workflow
 from src.core.langfuse import setup, shutdown, get_prompt
-
-setup()
-
+from src.core.config import settings
 from src.agents.main.my_agents import researcher, writer
 
-try:
-    researcher_prompt = get_prompt(prompt_name="researcher-instructions")
-    if researcher_prompt:
-        researcher.instructions = researcher_prompt.compile()
-except Exception:
-    pass
+def apply_agent_prompts():
+  researcher_prompt = get_prompt(
+    prompt_name=settings.prompt.RESEARCHER.NAME,
+    prompt_label=settings.prompt.RESEARCHER.LABEL
+  )
+  if researcher_prompt:
+    researcher.instructions = researcher_prompt.compile()
 
-content_workflow = Workflow(
+  writer_prompt = get_prompt(
+    prompt_name=settings.prompt.WRITER.NAME,
+    prompt_label=settings.prompt.WRITER.LABEL
+  )
+  if writer_prompt:
+    writer.instructions = writer_prompt.compile()
+
+def create_content_workflow():
+  setup()
+  apply_agent_prompts()
+
+  return Workflow(
     name="Content Creation",
     steps=[researcher, writer]
-)
+  )
 
-if __name__ == "__main__":
-    try:
-        content_workflow.print_response("Research the benefits of exercise and write a short article about it.", stream=True)
-    finally:
-        shutdown()
+def run_workflow_with_stream(topic: str):
+  research_result = researcher.run(topic)
 
+  text = ""
+  for event in writer.run(research_result, stream=True):
+    if hasattr(event, "content") and event.content:
+      text += event.content
+      yield text
+
+def shutdown_workflow():
+  shutdown()

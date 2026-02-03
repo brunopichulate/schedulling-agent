@@ -1,20 +1,30 @@
 import gradio as gr
-from src.workflows.basic_workflow import content_workflow
+from src.workflows.basic_workflow import (
+  run_workflow_with_stream,
+  create_content_workflow,
+  shutdown_workflow,
+)
+
+create_content_workflow()
 
 def generate_content(topic):
-    response = content_workflow.run(message=topic, stream=False)
-    
-    if hasattr(response, 'content'):
-        return response.content
-    return str(response)
+  for chunk in run_workflow_with_stream(topic):
+    yield chunk
+
 
 iface = gr.Interface(
-    fn=generate_content,
-    inputs=gr.Textbox(lines=2, placeholder="Enter a topic (e.g., 'The future of AI')"),
-    outputs=gr.Markdown(label="Generated Article"),
-    title="Agno Content Creation Workflow",
-    description="Enter a topic, and the Researcher agent will find info, then the Writer agent will write an article."
+  fn=generate_content,
+  inputs=gr.Textbox(
+    lines=2,
+    placeholder="Enter any topic"
+  ),
+  outputs=gr.Markdown(label="Result"),
+  title="Agno Content Workflow (Streaming)",
+  description="Researcher → tool → Writer (streaming)",
 )
 
 if __name__ == "__main__":
+  try:
     iface.launch()
+  finally:
+    shutdown_workflow()
