@@ -2,16 +2,21 @@
 
 Este projeto implementa agentes de IA inteligentes e workflows automatizados utilizando a biblioteca [Agno](https://github.com/agno-agi/agno) (anteriormente Phidata) e [OpenAI](https://openai.com/). Além disso, inclui integração completa com [Langfuse](https://langfuse.com/) para observabilidade e gerenciamento de prompts.
 
+O projeto agora expõe uma API REST desenvolvida com [FastAPI](https://fastapi.tiangolo.com/) e processamento assíncrono de tarefas via [Celery](https://docs.celeryq.dev/).
+
 ## 📋 Funcionalidades
 
 - **Agentes Especializados**: Agentes de IA que realizam tarefas específicas.
 - **Workflows**: Orquestração de tarefas complexas, coordenando múltiplos agentes.
+- **API REST**: Interface HTTP para interação com os agentes e serviços.
+- **Integração WhatsApp**: Recebimento e processamento de mensagens via Webhook.
+- **Background Tasks**: Processamento assíncrono de mensagens e workflows pesados via Celery e Redis.
 - **Observabilidade**: Integração com Langfuse local via Docker para monitoramento de traces e gerenciamento de prompts.
 
 ## 🛠️ Pré-requisitos
 
 - Python 3.12 ou superior
-- Docker e Docker Compose (para rodar o Langfuse localmente)
+- Docker e Docker Compose (para rodar Redis e Langfuse)
 - Gerenciador de dependências `uv`
 
 ## 🚀 Instalação
@@ -35,24 +40,44 @@ Copie o arquivo de exemplo e preencha com suas chaves:
 ```bash
 cp .env.example .env
 ```
-Certifique-se de configurar sua `OPENAI_API_KEY` e as credenciais do Langfuse no arquivo `.env`.
+Certifique-se de configurar:
+- `OPENAI_API_KEY`
+- Credenciais do Langfuse
+- Credenciais do WhatsApp/Meta (para integração com WhatsApp)
+- URL do Redis (para Celery e Rate Limiting)
 
-## 🐳 Configurando o Langfuse (Local)
+## 🐳 Infraestrutura (Redis e Langfuse)
 
-O projeto inclui um `docker-compose.yml` para rodar o Langfuse localmente (Server, Postgres e Redis).
+O projeto utiliza Redis como broker para o Celery e para Rate Limiting da API. O Langfuse é usado para observabilidade.
 
-1. Inicie os serviços:
+1. Inicie os serviços via Docker:
 ```bash
 docker-compose up -d
 ```
-2. Acesse o painel do Langfuse em `http://localhost:3000` (ou a porta configurada).
-3. Crie um projeto e obtenha suas chaves (Public Key, Secret Key, Host) para adicionar ao `.env`.
+2. Acesse o painel do Langfuse em `http://localhost:3000` (se habilitado).
 
 ## 💻 Como Usar
 
-### Executando um Workflow
+### Executando a API e o App
 
-Para rodar o workflow de teste com o gradio rode o seguinte comando:
+Para rodar a API (FastAPI):
+
+```bash
+uv run ./main.py
+```
+A API estará disponível em `http://localhost:8000`. A documentação interativa pode ser acessada em `http://localhost:8000/docs`.
+
+### Executando os Workers (Celery)
+
+Para processar tarefas em segundo plano (como mensagens do WhatsApp):
+
+```bash
+uv run celery -A src.core.celery worker --loglevel=info
+```
+
+### Executando um Workflow (Exemplo CLI)
+
+Para rodar o workflow de teste com o gradio:
 
 ```bash
 uv run ./chat.py
@@ -60,10 +85,13 @@ uv run ./chat.py
 
 ## 📂 Estrutura do Projeto
 
+- `src/api`: Rotas e controladores da API FastAPI.
 - `src/agents`: Definição dos agentes (ex: Researcher, Writer) e suas ferramentas.
+- `src/tasks`: Tarefas assíncronas do Celery (ex: processamento de WhatsApp).
+- `src/services`: Serviços de integração (ex: WhatsApp client).
 - `src/workflows`: Definição dos fluxos de trabalho que orquestram os agentes.
-- `src/core`: Configurações centrais, como a integração com Langfuse.
-- `docker-compose.yml`: Definição da infraestrutura local para o Langfuse.
+- `src/core`: Configurações centrais (Config, Celery, Langfuse).
+- `docker-compose.yml`: Definição da infraestrutura local para o Langfuse e Redis.
 - `pyproject.toml`: Gerenciamento de dependências e configurações do projeto.
 
 ## 🧪 Testes
