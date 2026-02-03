@@ -25,6 +25,9 @@ class LangfuseSettings(BaseModel):
   PUBLIC_KEY: SecretStr
   HOST: str
 
+class RedisSettings(BaseModel):
+  URL: str = "redis://localhost:6379/0"
+
 class OtelSettings(BaseModel):
   ENDPOINTS: str = ""
   ENABLE: bool = False
@@ -56,6 +59,7 @@ class Settings(BaseSettings):
   prompt: PromptSettings
   log: LoggerSettings
   otel: OtelSettings
+  redis: RedisSettings
   meta: MetaSettings
 
 def load_settings():
