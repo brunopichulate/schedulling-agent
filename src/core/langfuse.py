@@ -12,35 +12,38 @@ langfuse_client = Langfuse(
 
 logger = logging.getLogger(__name__)
 
+
 def setup():
-    if not langfuse_client:
-        logger.warning("Langfuse credentials not found. Skipping setup.")
-        return
+  if not langfuse_client:
+    logger.warning("Langfuse credentials not found. Skipping setup.")
+    return
 
-    logger.info("Setting up Langfuse...")
-    langfuse_client.auth_check()
+  logger.info("Setting up Langfuse...")
+  langfuse_client.auth_check()
 
-    AgnoInstrumentor().instrument()
+  AgnoInstrumentor().instrument()
 
-    logger.info("Langfuse setup complete")
+  logger.info("Langfuse setup complete")
 
 
 def get_prompt(
-    *, prompt_name: str, prompt_label: str | None = "production"
+  *, prompt_name: str, prompt_label: str | None = "production"
 ) -> TextPromptClient:
-    if not langfuse_client:
-        logger.warning("Langfuse client not initialized. Returning None.")
-        return None
-    return langfuse_client.get_prompt(prompt_name, label=prompt_label, cache_ttl_seconds=60)
+  if not langfuse_client:
+    logger.warning("Langfuse client not initialized. Returning None.")
+    return None
+  return langfuse_client.get_prompt(
+    prompt_name, label=prompt_label, cache_ttl_seconds=60
+  )
 
 
 def shutdown():
-    if not langfuse_client:
-        return
-    logger.info("Shutting down Langfuse...")
-    langfuse_client.flush()
-    langfuse_client.shutdown()
-    logger.info("Langfuse shut down complete")
+  if not langfuse_client:
+    return
+  logger.info("Shutting down Langfuse...")
+  langfuse_client.flush()
+  langfuse_client.shutdown()
+  logger.info("Langfuse shut down complete")
 
 
 __all__ = ["observe"]

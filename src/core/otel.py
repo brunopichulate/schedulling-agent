@@ -18,6 +18,7 @@ from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry import _logs as logs_api
 
+
 def init_otel(
   otel_endpoints: str, enable: bool = False
 ) -> LoggerProvider | None:

@@ -24,7 +24,9 @@ class AudioContent(BaseModel):
   id: str
   mime_type: str
   sha256: str
-  voice: bool | None = None  # True if voice recording, False or None for audio files
+  voice: bool | None = (
+    None  # True if voice recording, False or None for audio files
+  )
 
 
 class VideoContent(BaseModel):
@@ -154,6 +156,7 @@ class InteractiveMessage(BaseModel):
 
 class UnsupportedMessage(BaseModel):
   """Catch-all for message types we don't handle: contacts, reaction, order, system, unsupported, etc."""
+
   type: Literal["contacts", "reaction", "order", "system", "unsupported"]
   from_: str = Field(alias="from")
   id: str

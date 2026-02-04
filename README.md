@@ -101,3 +101,11 @@ Para rodar os testes automatizados:
 ```bash
 pytest
 ```
+
+## Lint
+
+```bash
+uv run ruff check .
+uv run ruff check . --fix
+uv run ruff format .
+```

@@ -9,6 +9,7 @@ from src.api.common import common_router
 from src.api.v1 import api_v1_router
 from fastapi_limiter.depends import RateLimiter
 
+
 def create_app(lifespan: Lifespan | None = None) -> FastAPI:
   """Create and configure the FastAPI application."""
   app = FastAPI(

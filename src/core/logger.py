@@ -8,6 +8,7 @@ from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
 init(autoreset=True)
 
+
 class ColorFormatter(logging.Formatter):
   COLORS = {
     logging.DEBUG: Fore.BLUE,

@@ -10,6 +10,7 @@ from src.core.logger import init_logging, update_level
 
 logger = logging.getLogger(__name__)
 
+
 class MetaSettings(BaseModel):
   VERIFY_TOKEN: SecretStr
   APP_SECRET: SecretStr
@@ -17,31 +18,39 @@ class MetaSettings(BaseModel):
   ACCESS_TOKEN: SecretStr
   PHONE_NUMBER_ID: str
 
+
 class OpenAISettings(BaseModel):
   API_KEY: SecretStr
+
 
 class LangfuseSettings(BaseModel):
   SECRET_KEY: SecretStr
   PUBLIC_KEY: SecretStr
   HOST: str
 
+
 class RedisSettings(BaseModel):
   URL: str = "redis://localhost:6379/0"
+
 
 class OtelSettings(BaseModel):
   ENDPOINTS: str = ""
   ENABLE: bool = False
 
+
 class PromptConfig(BaseModel):
   NAME: str
   LABEL: str
+
 
 class PromptSettings(BaseModel):
   WRITER: PromptConfig
   RESEARCHER: PromptConfig
 
+
 class LoggerSettings(BaseModel):
   LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
 
 class Settings(BaseSettings):
   model_config = SettingsConfigDict(
@@ -61,6 +70,7 @@ class Settings(BaseSettings):
   otel: OtelSettings
   redis: RedisSettings
   meta: MetaSettings
+
 
 def load_settings():
   """Load settings before initializing logging and telemetry."""

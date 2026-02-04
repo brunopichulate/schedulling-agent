@@ -20,6 +20,11 @@ dependencies = [
     "python-dotenv>=1.2.1",
 ]
 
+[project.scripts]
+lint = "ruff check ."
+lint-fix = "ruff check . --fix"
+format = "ruff format ."
+
 [dependency-groups]
 dev = [
     "gradio>=6.5.1",
