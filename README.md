@@ -64,8 +64,10 @@ Para rodar a API (FastAPI):
 
 ```bash
 uv run ./main.py
+
+uv run celery -A src.core.celery worker --loglevel=info
 ```
-A API estará disponível em `http://localhost:8000`. A documentação interativa pode ser acessada em `http://localhost:8000/docs`.
+A API estará disponível em `http://localhost:8000`.
 
 ### Executando os Workers (Celery)
 
@@ -108,4 +110,14 @@ pytest
 uv run ruff check .
 uv run ruff check . --fix
 uv run ruff format .
+```
+
+## Flower + Celery
+
+```bash
+uv run .\main.py
+uv run celery -A src.core.celery worker --loglevel=info
+uv run celery -A src.core.celery flower
+
+http://localhost:5555
 ```
