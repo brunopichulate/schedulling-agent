@@ -116,7 +116,7 @@ uv run ruff format .
 
 ```bash
 uv run .\main.py
-uv run celery -A src.core.celery worker --loglevel=info
+uv run celery -A src.core.celery worker -P solo --concurrency=1 --loglevel=info
 uv run celery -A src.core.celery flower
 
 http://localhost:5555
