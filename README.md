@@ -45,6 +45,7 @@ Certifique-se de configurar:
 - Credenciais do Langfuse
 - Credenciais do WhatsApp/Meta (para integração com WhatsApp)
 - URL do Redis (para Celery e Rate Limiting)
+- URL do MongoDB
 
 ## 🐳 Infraestrutura (Redis e Langfuse)
 

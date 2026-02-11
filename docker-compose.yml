@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15
@@ -22,16 +20,18 @@ services:
     restart: unless-stopped
 
   langfuse-server:
-    image: ghcr.io/langfuse/langfuse-server:latest
+    image: ghcr.io/langfuse/langfuse:latest
     container_name: langfuse_server
     depends_on:
       - postgres
       - redis
     environment:
-      DATABASE_URL: "postgres://langfuse:langfuse@postgres:5432/langfuse"
-      REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: postgres://langfuse:langfuse@postgres:5432/langfuse
+      REDIS_URL: redis://redis:6379
       PORT: 8080
-      LF_ENV: "local"
+      NEXTAUTH_SECRET: "supersecret"
+      NEXTAUTH_URL: "http://localhost:8080"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
     ports:
       - "8080:8080"
     restart: unless-stopped
