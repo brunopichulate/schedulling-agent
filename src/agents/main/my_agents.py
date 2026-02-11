@@ -1,16 +1,16 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from src.core.config import settings
-from .tools.test_tool import count_words
+from .tools.mentor_tools import search_mentor_tool
 
 
 researcher = Agent(
-  name="Researcher",
-  role="Find relevant information about the topic",
+  name="MentorAssistant",
+  role="You are a professional assistant specialized in providing concise information about mentors stored in the system database.",
   model=OpenAIChat(
     id="gpt-4o", api_key=settings.openai.API_KEY.get_secret_value()
   ),
-  tools=[count_words],
+  tools=[search_mentor_tool],
   markdown=True,
 )
 

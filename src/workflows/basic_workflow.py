@@ -28,13 +28,10 @@ def create_content_workflow():
 
 
 def run_workflow_with_stream(topic: str):
-  research_result = researcher.run(topic)
-
-  text = ""
-  for event in writer.run(research_result, stream=True):
-    if hasattr(event, "content") and event.content:
-      text += event.content
-      yield text
+  # Use the Unified/Researcher agent directly
+  for event in researcher.run(topic, stream=True):
+      if hasattr(event, "content") and event.content:
+          yield event.content
 
 
 def shutdown_workflow():

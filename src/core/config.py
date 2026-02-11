@@ -52,6 +52,10 @@ class LoggerSettings(BaseModel):
   LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
 
+class MongoDBSettings(BaseModel):
+  URL: str
+
+
 class Settings(BaseSettings):
   model_config = SettingsConfigDict(
     env_file=".env",
@@ -70,6 +74,7 @@ class Settings(BaseSettings):
   otel: OtelSettings
   redis: RedisSettings
   meta: MetaSettings
+  mongodb: MongoDBSettings
 
 
 def load_settings():

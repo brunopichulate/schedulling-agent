@@ -15,10 +15,10 @@ def generate_content(topic):
 
 iface = gr.Interface(
   fn=generate_content,
-  inputs=gr.Textbox(lines=2, placeholder="Enter any topic"),
+  inputs=gr.Textbox(lines=2, placeholder="Enter any topic or ask about a mentor"),
   outputs=gr.Markdown(label="Result"),
   title="Agno Content Workflow (Streaming)",
-  description="Researcher → tool → Writer (streaming)",
+  description="Researcher (with Mentor Tool) → Writer (streaming)",
 )
 
 if __name__ == "__main__":
