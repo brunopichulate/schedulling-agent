@@ -1,16 +1,16 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from src.core.config import settings
-from .tools.mentor_tools import search_mentor_tool
+from .tools.mentor_tools import search_mentor_tool, recommend_mentor_tool
 
 
 researcher = Agent(
   name="MentorAssistant",
-  role="You are a professional assistant specialized in providing concise information about mentors stored in the system database.",
+  role="You are a professional assistant specialized in providing info about mentors. You can find mentors by name or recommend them based on a topic/skill.",
   model=OpenAIChat(
     id="gpt-4o", api_key=settings.openai.API_KEY.get_secret_value()
   ),
-  tools=[search_mentor_tool],
+  tools=[search_mentor_tool, recommend_mentor_tool],
   markdown=True,
 )
 

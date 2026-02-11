@@ -14,3 +14,23 @@ def search_mentor_tool(query: str) -> str:
         return json.dumps(mentor.get("biography", "Biography not available."), ensure_ascii=False)
     else:
         return "Mentor not found in the database."
+
+
+def recommend_mentor_tool(topic: str) -> str:
+    """
+    Recommends mentors based on a specific topic or skill.
+    
+    Args:
+        topic (str): The skill, expertise, or topic to find mentors for (e.g., 'marketing', 'compliance').
+    
+    Returns:
+        str: A JSON string containing a list of recommended mentors with their biographies and skills.
+    """
+    from src.services.mentor_service import find_mentors_by_skill
+    
+    mentors = find_mentors_by_skill(topic)
+    
+    if not mentors:
+        return "No mentors found for the given topic."
+        
+    return json.dumps(mentors, ensure_ascii=False)

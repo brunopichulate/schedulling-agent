@@ -55,3 +55,35 @@ def find_mentor(query: str) -> Optional[Dict[str, Any]]:
     )
 
     return mentor
+
+
+def find_mentors_by_skill(skill_query: str, limit: int = 3) -> list[Dict[str, Any]]:
+    """
+    Searches for mentors based on a skill or topic.
+    Checks 'functional_skills.macro', 'functional_skills.micro',
+    and 'functional_skills_description'.
+    """
+    db = get_database()
+    collection = db["person"]
+
+    # Case-insensitive regex for the skill query
+    regex_query = {"$regex": re.escape(skill_query), "$options": "i"}
+
+    cursor = collection.find(
+        {
+            "$or": [
+                {"functional_skills.macro": regex_query},
+                {"functional_skills.micro": regex_query},
+                {"functional_skills_description": regex_query},
+            ]
+        },
+        {
+            "_id": 0,
+            "name": 1,
+            "biography": 1,
+            "functional_skills": 1,
+            "functional_skills_description": 1,
+        },
+    ).limit(limit)
+
+    return list(cursor)
