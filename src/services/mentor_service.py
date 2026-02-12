@@ -89,11 +89,22 @@ def find_mentors_by_skill(skill_query: str, limit: int = 3) -> list[Dict[str, An
                         "onError": -1.0,
                         "onNull": -1.0
                     }
+                },
+                "normalized_time_donated": {
+                    "$convert": {
+                        "input": "$status.total_time_donated_year",
+                        "to": "double",
+                        "onError": -1.0,
+                        "onNull": -1.0
+                    }
                 }
             }
         },
         {
-            "$sort": {"normalized_rating": -1}
+            "$sort": {
+                "normalized_rating": -1,
+                "normalized_time_donated": -1
+            }
         },
         {
             "$limit": limit
@@ -105,7 +116,8 @@ def find_mentors_by_skill(skill_query: str, limit: int = 3) -> list[Dict[str, An
                 "biography": 1,
                 "functional_skills": 1,
                 "functional_skills_description": 1,
-                "avg_mentor_rating": 1
+                "avg_mentor_rating": 1,
+                "status": 1
             }
         }
     ]
