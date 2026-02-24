@@ -1,37 +1,22 @@
 from agno.workflow import Workflow
-from src.core.langfuse import setup, shutdown, get_prompt
-from src.core.config import settings
-from src.agents.main.my_agents import researcher, writer
-
-
-def apply_agent_prompts():
-  researcher_prompt = get_prompt(
-    prompt_name=settings.prompt.RESEARCHER.NAME,
-    prompt_label=settings.prompt.RESEARCHER.LABEL,
-  )
-  if researcher_prompt:
-    researcher.instructions = researcher_prompt.compile()
-
-  writer_prompt = get_prompt(
-    prompt_name=settings.prompt.WRITER.NAME,
-    prompt_label=settings.prompt.WRITER.LABEL,
-  )
-  if writer_prompt:
-    writer.instructions = writer_prompt.compile()
+from src.core.langfuse import setup, shutdown
+from src.agents.main.my_agents import meeting_orchestrator
+from src.agents.main.tools.meeting_tools import get_current_meeting_state_tool
 
 
 def create_content_workflow():
   setup()
-  apply_agent_prompts()
 
-  return Workflow(name="Content Creation", steps=[researcher, writer])
+  return Workflow(name="Content Creation", steps=[meeting_orchestrator])
 
 
-def run_workflow_with_stream(topic: str):
-  # Use the Unified/Researcher agent directly
-  for event in researcher.run(topic, stream=True):
-      if hasattr(event, "content") and event.content:
-          yield event.content
+def run_meeting_workflow_with_stream(message: str):
+  state_payload = get_current_meeting_state_tool()
+  enriched_message = f"State: {state_payload}\\nUser Input: {message}"
+
+  for event in meeting_orchestrator.run(enriched_message, stream=True):
+    if hasattr(event, "content") and event.content:
+      yield event.content
 
 
 def shutdown_workflow():

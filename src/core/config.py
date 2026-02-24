@@ -69,7 +69,7 @@ class Settings(BaseSettings):
 
   langfuse: LangfuseSettings
   openai: OpenAISettings
-  prompt: PromptSettings
+  prompt: PromptSettings | None = None
   log: LoggerSettings
   otel: OtelSettings
   redis: RedisSettings

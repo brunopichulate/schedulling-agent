@@ -1,41 +1,51 @@
 import gradio as gr
 from src.workflows.basic_workflow import (
-    run_workflow_with_stream,
-    create_content_workflow,
-    shutdown_workflow,
+  run_meeting_workflow_with_stream,
+  create_content_workflow,
+  shutdown_workflow,
 )
 
-# Initialize workflow once
 create_content_workflow()
 
+with gr.Blocks() as iface:
+  gr.Markdown("# Meeting Orchestrator Agent")
+  gr.Markdown(
+    "Envie qualquer mensagem para iniciar o fluxo. O agente gerenciará o status da meeting via ferramentas."
+  )
 
-def generate_content(topic):
-    """
-    Streams the response properly by accumulating chunks
-    so Gradio does not render token-by-token.
-    """
+  chatbot = gr.Chatbot(height=500)
+  msg = gr.Textbox(
+    placeholder="Envie qualquer mensagem...", label="Sua mensagem"
+  )
+
+  state = gr.State([])
+
+  def user_action(user_message, history):
+    new_history = history + [{"role": "user", "content": user_message}]
+    return "", new_history
+
+  def bot_action(user_message, history):
+    history.append({"role": "assistant", "content": "..."})
+    yield history, history
+
     full_response = ""
-
-    for chunk in run_workflow_with_stream(topic):
+    try:
+      for chunk in run_meeting_workflow_with_stream(user_message):
         if chunk:
-            full_response += chunk
-            yield full_response
+          full_response += chunk
+          history[-1]["content"] = full_response
+          yield history, history
+    except Exception as e:
+      history[-1]["content"] = f"Ocorreu um erro: {str(e)}"
+      yield history, history
 
-
-iface = gr.Interface(
-    fn=generate_content,
-    inputs=gr.Textbox(
-        lines=2,
-        placeholder="Enter any topic or ask about a mentor"
-    ),
-    outputs=gr.Markdown(label="Result"),
-    title="Agno Endeavor Workflow",
-    description="Searches info about person on db",
-)
+  msg.submit(user_action, [msg, state], [msg, state], queue=False).then(
+    bot_action, [msg, state], [chatbot, state]
+  )
 
 
 if __name__ == "__main__":
-    try:
-        iface.launch()
-    finally:
-        shutdown_workflow()
+  try:
+    iface.launch()
+  finally:
+    shutdown_workflow()

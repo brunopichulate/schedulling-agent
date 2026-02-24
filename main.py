@@ -17,7 +17,9 @@ async def lifespan(app):
 
   logger.info("application_startup")
   redis_connection = redis.from_url(
-    settings.redis.URL, encoding="utf-8", decode_responses=True,
+    settings.redis.URL,
+    encoding="utf-8",
+    decode_responses=True,
   )
   await FastAPILimiter.init(redis_connection)
 
