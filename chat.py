@@ -9,9 +9,7 @@ create_content_workflow()
 
 with gr.Blocks() as iface:
   gr.Markdown("# Meeting Orchestrator Agent")
-  gr.Markdown(
-    "Envie qualquer mensagem para iniciar o fluxo. O agente gerenciará o status da meeting via ferramentas."
-  )
+  gr.Markdown("Envie qualquer mensagem para iniciar o fluxo.")
 
   chatbot = gr.Chatbot(height=500)
   msg = gr.Textbox(
@@ -24,7 +22,8 @@ with gr.Blocks() as iface:
     new_history = history + [{"role": "user", "content": user_message}]
     return "", new_history
 
-  def bot_action(user_message, history):
+  def bot_action(history):
+    user_message = history[-1]["content"] if history else ""
     history.append({"role": "assistant", "content": "..."})
     yield history, history
 
@@ -40,7 +39,7 @@ with gr.Blocks() as iface:
       yield history, history
 
   msg.submit(user_action, [msg, state], [msg, state], queue=False).then(
-    bot_action, [msg, state], [chatbot, state]
+    bot_action, [state], [chatbot, state]
   )
 
 

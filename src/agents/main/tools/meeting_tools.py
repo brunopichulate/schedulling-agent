@@ -1,46 +1,8 @@
 import json
-from src.services.mentor_service import find_potential_meetings
-
-MEETING_STATE = {
-  "status": "INIT",
-  "meeting": None,
-  "donated": None,
-  "received": None,
-  "selected_slot": None,
-}
-
-
-def load_potential_meeting_into_state() -> bool:
-  """
-  Looks for a meeting in 'Potential' status, extracts the attendees (Donated and Received),
-  and initializes the meeting state.
-
-  Returns:
-      bool: True if the meeting was successfully loaded, False otherwise
-  """
-  global MEETING_STATE
-
-  meeting = find_potential_meetings()
-  if not meeting:
-    return False
-
-  attendees = meeting.get("attendees", [])
-
-  donated = next(
-    (att for att in attendees if att.get("role") == "Donated"), None
-  )
-  received = next(
-    (att for att in attendees if att.get("role") == "Received"), None
-  )
-
-  if not donated or not received:
-    return False
-
-  MEETING_STATE["meeting"] = meeting
-  MEETING_STATE["donated"] = donated
-  MEETING_STATE["received"] = received
-
-  return True
+from src.services.state_machine_service import (
+  update_meeting_state,
+  get_current_meeting_state,
+)
 
 
 def update_meeting_state_tool(new_state: str, selection: str = None) -> str:
@@ -58,31 +20,8 @@ def update_meeting_state_tool(new_state: str, selection: str = None) -> str:
   Returns:
       str: Confirmation that the state transitioned, and any relevant state dumps.
   """
-  global MEETING_STATE
-  MEETING_STATE["status"] = new_state
-
-  if selection and new_state == "DONATED_SELECTED_SLOT":
-    MEETING_STATE["selected_slot"] = selection
-
-  if new_state in ["RECEIVED_CONFIRMED", "RECEIVED_REJECTED"]:
-    # We can clear state after completion
-    state_snapshot = MEETING_STATE.copy()
-    MEETING_STATE = {
-      "status": "INIT",
-      "meeting": None,
-      "donated": None,
-      "received": None,
-      "selected_slot": None,
-    }
-    return json.dumps(
-      {"status_updated_to": new_state, "final_state": state_snapshot},
-      default=str,
-    )
-
-  return json.dumps(
-    {"status_updated_to": new_state, "current_state": MEETING_STATE},
-    default=str,
-  )
+  result = update_meeting_state(new_state, selection)
+  return json.dumps(result, default=str)
 
 
 def get_current_meeting_state_tool() -> str:
@@ -92,5 +31,5 @@ def get_current_meeting_state_tool() -> str:
   Returns:
       str: A JSON string with the current state.
   """
-  state_payload = MEETING_STATE.copy()
+  state_payload = get_current_meeting_state()
   return json.dumps(state_payload, default=str)
