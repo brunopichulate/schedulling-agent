@@ -9,19 +9,20 @@ MEETING_STATE = {
   "selected_slot": None,
 }
 
-def check_potential_meetings_tool() -> str:
+
+def load_potential_meeting_into_state() -> bool:
   """
   Looks for a meeting in 'Potential' status, extracts the attendees (Donated and Received),
-  and initializes the meeting state. This should be called when the workflow status is INIT.
+  and initializes the meeting state.
 
   Returns:
-      str: A JSON string containing the meeting details or an error message if not found.
+      bool: True if the meeting was successfully loaded, False otherwise
   """
   global MEETING_STATE
 
   meeting = find_potential_meetings()
   if not meeting:
-    return json.dumps({"error": "No meetings with 'Potential' status found."})
+    return False
 
   attendees = meeting.get("attendees", [])
 
@@ -33,20 +34,13 @@ def check_potential_meetings_tool() -> str:
   )
 
   if not donated or not received:
-    return json.dumps(
-      {
-        "error": "Found a meeting, but it is missing Donated or Received roles."
-      }
-    )
+    return False
 
   MEETING_STATE["meeting"] = meeting
   MEETING_STATE["donated"] = donated
   MEETING_STATE["received"] = received
 
-  return json.dumps(
-    {"success": True, "meeting": {"donated": donated, "received": received}},
-    default=str,
-  )
+  return True
 
 
 def update_meeting_state_tool(new_state: str, selection: str = None) -> str:

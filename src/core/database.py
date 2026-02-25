@@ -3,6 +3,7 @@ from src.core.config import settings
 
 _client = None
 
+
 def get_database():
   global _client
 
