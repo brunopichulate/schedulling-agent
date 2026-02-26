@@ -21,13 +21,45 @@ NO_RESPONSE_TIMEOUT_SECONDS = 30
 logger = logging.getLogger(__name__)
 
 
-def _format_meeting_date(iso_date: str) -> str:
-  """Formats an ISO date string to a human-readable Portuguese format."""
+def _format_meeting_date(value) -> str:
+  """Formats a date (datetime object or ISO string) to humanized Portuguese."""
+  _WEEKDAYS = [
+    "segunda-feira",
+    "terça-feira",
+    "quarta-feira",
+    "quinta-feira",
+    "sexta-feira",
+    "sábado",
+    "domingo",
+  ]
+  _MONTHS = [
+    "",
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+  ]
   try:
-    dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
-    return dt.strftime("%d/%m/%Y às %H:%M")
+    if isinstance(value, datetime):
+      dt = value
+    else:
+      normalized = str(value).strip().replace(" ", "T").replace("Z", "+00:00")
+      dt = datetime.fromisoformat(normalized)
+    weekday = _WEEKDAYS[dt.weekday()]
+    month = _MONTHS[dt.month]
+    return (
+      f"{weekday}, {dt.day} de {month} de {dt.year} às {dt.strftime('%H:%M')}"
+    )
   except Exception:
-    return iso_date
+    return str(value)
 
 
 def _build_slot_suggestions(iso_date: str) -> list[str]:
@@ -36,7 +68,13 @@ def _build_slot_suggestions(iso_date: str) -> list[str]:
   morning (09:00), afternoon (14:00), and evening (19:00) of the same day.
   """
   try:
-    dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
+    if isinstance(iso_date, datetime):
+      dt = iso_date
+    else:
+      normalized = (
+        str(iso_date).strip().replace(" ", "T").replace("Z", "+00:00")
+      )
+      dt = datetime.fromisoformat(normalized)
     date_str = dt.strftime("%d/%m/%Y")
     return [
       f"1. Manhã   – {date_str} 09:00",
@@ -56,7 +94,11 @@ def _parse_extracted(content, field: str, default=None):
   Safely extracts a field from the LLM response content.
   Handles Pydantic models, dicts, and raw JSON strings.
   """
-  logger.debug("[SlotExtractor] content type=%s, value=%r", type(content).__name__, content)
+  logger.debug(
+    "[SlotExtractor] content type=%s, value=%r",
+    type(content).__name__,
+    content,
+  )
 
   # Case 1: Pydantic model
   if hasattr(content, field):
@@ -121,7 +163,9 @@ def run_meeting_workflow_with_stream(message: str):
   if current_status == "INIT":
     slots = _build_slot_suggestions(meeting_date_iso)
     date_display = (
-      _format_meeting_date(meeting_date_iso) if meeting_date_iso else "em aberto"
+      _format_meeting_date(meeting_date_iso)
+      if meeting_date_iso
+      else "em aberto"
     )
     update_meeting_state("WAITING_DONATED_RESPONSE")
     record_interaction_time()
@@ -132,7 +176,7 @@ def run_meeting_workflow_with_stream(message: str):
       f"Escolha um dos horários abaixo ou informe outro de sua preferência "
       f"(ex: *amanhã*, *dia 29*, *às 13:00*, *de manhã*):\n\n"
       + "\n".join(slots)
-      + "\n\nCaso não queira agendar, basta digitar **cancelar**."
+      + "\n\nCaso não queira agendar, basta dizer."
     )
     return
 
@@ -158,7 +202,9 @@ def run_meeting_workflow_with_stream(message: str):
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
-    selected_slot = _parse_extracted(extracted, "selected_date_time", default=None)
+    selected_slot = _parse_extracted(
+      extracted, "selected_date_time", default=None
+    )
 
     if is_rejected:
       update_meeting_state("DONATED_REJECTED_SLOTS")
