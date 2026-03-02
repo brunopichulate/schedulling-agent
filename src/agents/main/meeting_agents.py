@@ -55,7 +55,7 @@ slot_extractor_agent = Agent(
       Considere AGENDAR quando o usuário mencionar:
 
       - Número 1, 2 ou 3 (opções do menu)
-      - Um horário (ex: 19h, 17:00, às 14h, de manhã, à tarde, à noite)
+      - Um horário (ex: 19h, 17:00, às 14h, 9 da noite)
       - Uma data (ex: dia 29, 29/06, 29/06/2023)
       - Um dia da semana (segunda, terça, quarta, quinta, sexta, sábado, domingo)
       - Referência relativa (amanhã, hoje, depois de amanhã)
@@ -94,10 +94,33 @@ slot_extractor_agent = Agent(
         → se a data já tiver passado no mês atual,
           avance para o próximo mês
 
-      7) Se mencionar termos:
-        - "de manhã"  → 09:00
-        - "à tarde"   → 14:00
-        - "à noite"   → 19:00
+      ----------------------------------------------------
+      TRATAMENTO DE HORÁRIOS (24H)
+
+      A) Se mencionar horário explícito:
+        - "19h" → 19:00
+        - "17:30" → 17:30
+        - "às 8" → 08:00
+
+      B) Se mencionar apenas período do dia (SEM número):
+        - "de manhã" → 09:00
+        - "à tarde" → 14:00
+        - "à noite" → 19:00
+
+      C) Se mencionar número + período:
+
+        - "X da manhã" → HH = X
+        - "X da tarde" → HH = X + 12 (se X < 12)
+        - "X da noite" → HH = X + 12 (se X < 12)
+
+        Casos especiais:
+        - "12 da manhã" → 00:00
+        - "12 da noite" → 00:00
+
+        Exemplos:
+        - "9 da noite" → 21:00
+        - "8 da manhã" → 08:00
+        - "3 da tarde" → 15:00
 
       ----------------------------------------------------
       FORMATO DE SAÍDA
