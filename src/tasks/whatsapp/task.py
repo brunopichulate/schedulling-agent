@@ -2,7 +2,7 @@
 import logging
 import asyncio
 from src.core.celery import celery_app
-from src.workflows.basic_workflow import run_workflow_with_stream
+from src.workflows.basic_workflow import run_meeting_workflow_with_stream
 from src.services.whatsapp import whatsapp
 
 from .schemas import (
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def run_sync_workflow(topic: str) -> str:
   """Helper to run the sync generator workflow and get final result."""
   final_response = ""
-  for text in run_workflow_with_stream(topic):
+  for text in run_meeting_workflow_with_stream(topic):
     final_response = text
   return final_response
 

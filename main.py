@@ -6,7 +6,7 @@ from src.api import create_app
 import redis.asyncio as redis
 from fastapi_limiter import FastAPILimiter
 from src.core.config import settings
-from src.core.langfuse import shutdown
+from src.core.langfuse import setup, shutdown
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ async def lifespan(app):
   """Manage application startup and shutdown events."""
 
   logger.info("application_startup")
+  setup()
   redis_connection = redis.from_url(
     settings.redis.URL,
     encoding="utf-8",
