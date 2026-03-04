@@ -1,5 +1,5 @@
 import gradio as gr
-from src.workflows.basic_workflow import (
+from src.workflows.gradio_workflow import (
   run_meeting_workflow_with_stream,
   create_content_workflow,
   shutdown_workflow,

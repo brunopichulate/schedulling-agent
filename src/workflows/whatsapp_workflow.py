@@ -127,16 +127,16 @@ def create_content_workflow():
   )
 
 
-def run_meeting_workflow_with_stream(message: str):
+def run_meeting_workflow_with_stream(message: str, user_id: str):
   # ── 1. Load meeting into state on first run ────────────────────────────
-  state_dict = get_current_meeting_state()
+  state_dict = get_current_meeting_state(user_id)
 
   if state_dict.get("status") == "INIT" and not state_dict.get("meeting"):
-    success = load_potential_meeting_into_state(MEETING_ID)
+    success = load_potential_meeting_into_state(MEETING_ID, user_id)
     if not success:
       yield "Nenhuma meeting com status 'Potential' foi encontrada no banco."
       return
-    state_dict = get_current_meeting_state()
+    state_dict = get_current_meeting_state(user_id)
 
   # ── 2. Resolve common context ──────────────────────────────────────────
   current_status = state_dict.get("status", "INIT")
@@ -167,8 +167,8 @@ def run_meeting_workflow_with_stream(message: str):
       if meeting_date_iso
       else "em aberto"
     )
-    update_meeting_state("WAITING_DONATED_RESPONSE")
-    record_interaction_time()
+    update_meeting_state("WAITING_DONATED_RESPONSE", user_id)
+    record_interaction_time(user_id)
 
     yield (
       f"Olá, {donated_name}! 👋\n\n"
@@ -182,10 +182,10 @@ def run_meeting_workflow_with_stream(message: str):
 
   # ── WAITING_DONATED_RESPONSE ───────────────────────────────────────────
   elif current_status == "WAITING_DONATED_RESPONSE":
-    # Check for 30-second no-response timeout
-    if check_timeout(NO_RESPONSE_TIMEOUT_SECONDS):
-      update_meeting_state("DONATED_NO_RESPONSE")
-      update_meeting_state("HUMAN_INTERVITION_REQUIRED")
+    # Check for no-response timeout
+    if check_timeout(user_id, NO_RESPONSE_TIMEOUT_SECONDS):
+      update_meeting_state("DONATED_NO_RESPONSE", user_id)
+      update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
         "⏰ O mentor não respondeu a tempo. "
         "O caso foi encaminhado para intervenção humana."
@@ -207,8 +207,8 @@ def run_meeting_workflow_with_stream(message: str):
     )
 
     if is_rejected:
-      update_meeting_state("DONATED_REJECTED_SLOTS")
-      update_meeting_state("HUMAN_INTERVITION_REQUIRED")
+      update_meeting_state("DONATED_REJECTED_SLOTS", user_id)
+      update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
         "Entendido, o mentor optou por não agendar. "
         "O caso foi encaminhado para intervenção humana."
@@ -216,9 +216,11 @@ def run_meeting_workflow_with_stream(message: str):
       return
 
     if selected_slot:
-      update_meeting_state("DONATED_SELECTED_SLOT", selection=selected_slot)
-      update_meeting_state("WAITING_RECEIVED_RESPONSE")
-      record_interaction_time()
+      update_meeting_state(
+        "DONATED_SELECTED_SLOT", user_id, selection=selected_slot
+      )
+      update_meeting_state("WAITING_RECEIVED_RESPONSE", user_id)
+      record_interaction_time(user_id)
 
       # Format the slot nicely for the confirmation message
       try:
@@ -244,9 +246,9 @@ def run_meeting_workflow_with_stream(message: str):
 
   # ── WAITING_RECEIVED_RESPONSE ──────────────────────────────────────────
   elif current_status == "WAITING_RECEIVED_RESPONSE":
-    if check_timeout(NO_RESPONSE_TIMEOUT_SECONDS):
-      update_meeting_state("RECEIVED_NO_RESPONSE")
-      update_meeting_state("HUMAN_INTERVITION_REQUIRED")
+    if check_timeout(user_id, NO_RESPONSE_TIMEOUT_SECONDS):
+      update_meeting_state("RECEIVED_NO_RESPONSE", user_id)
+      update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
         "⏰ O mentorado não respondeu a tempo. "
         "O caso foi encaminhado para intervenção humana."
@@ -259,8 +261,8 @@ def run_meeting_workflow_with_stream(message: str):
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
 
     if is_rejected:
-      update_meeting_state("RECEIVED_REJECTED")
-      update_meeting_state("HUMAN_INTERVITION_REQUIRED")
+      update_meeting_state("RECEIVED_REJECTED", user_id)
+      update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
         f"O mentorado {received_name} não aceitou o horário sugerido. "
         "O caso foi encaminhado para intervenção humana."
@@ -275,7 +277,7 @@ def run_meeting_workflow_with_stream(message: str):
     except Exception:
       slot_display = selected_slot or "o horário selecionado"
 
-    update_meeting_state("RECEIVED_CONFIRMED")
+    update_meeting_state("RECEIVED_CONFIRMED", user_id)
     yield (
       f"✅ Reunião agendada com sucesso!\n\n"
       f"**{donated_name}** e **{received_name}** se encontrarão em "

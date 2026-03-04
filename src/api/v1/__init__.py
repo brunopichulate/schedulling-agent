@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from src.api.v1 import (
   whatsapp,
+  schedule,
 )
 
 api_v1_router = APIRouter(prefix="/v1")
@@ -9,5 +10,7 @@ api_v1_router = APIRouter(prefix="/v1")
 api_v1_router.include_router(
   whatsapp.router, prefix="/channels/whatsapp", tags=["WhatsApp"]
 )
+
+api_v1_router.include_router(schedule.router, tags=["Schedule"])
 
 __all__ = ["api_v1_router"]

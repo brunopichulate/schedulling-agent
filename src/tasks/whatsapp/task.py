@@ -1,8 +1,6 @@
-# src/tasks/whatsapp/task.py
 import logging
 import asyncio
 from src.core.celery import celery_app
-from src.workflows.basic_workflow import run_meeting_workflow_with_stream
 from src.services.whatsapp import whatsapp
 
 from .schemas import (
@@ -12,14 +10,6 @@ from .schemas import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def run_sync_workflow(topic: str) -> str:
-  """Helper to run the sync generator workflow and get final result."""
-  final_response = ""
-  for text in run_meeting_workflow_with_stream(topic):
-    final_response = text
-  return final_response
 
 
 async def _process_whatsapp_message(message: WhatsAppMessage):
@@ -38,23 +28,11 @@ async def _process_whatsapp_message(message: WhatsAppMessage):
     case TextMessage(text=text_content):
       logger.info(f"Text: {text_content.body}")
 
-      try:
-        reply = await asyncio.to_thread(run_sync_workflow, text_content.body)
-
-        if reply:
-          await whatsapp.send_text_humanized(to, reply)
-          logger.info(f"Sent reply to {to}")
-        else:
-          logger.warning(f"Empty workflow response for {to}")
-          await whatsapp.send_text_humanized(
-            to, "Desculpe, não consegui gerar uma resposta."
-          )
-
-      except Exception as e:
-        logger.error(f"Error running workflow: {e}", exc_info=True)
-        await whatsapp.send_text_humanized(
-          to, "Ocorreu um erro ao processar sua mensagem."
-        )
+      await whatsapp.send_text_humanized(
+        to,
+        "Esse canal é apenas para agendamentos, caso tenha alguma outra dúvida ou sugestão, fale diretamente com o seu principal ponto de contato na Endeavor.",
+      )
+      logger.info(f"Sent fixed reply to {to}")
 
     case _:
       logger.info(f"Unsupported message type: {message.type}")
