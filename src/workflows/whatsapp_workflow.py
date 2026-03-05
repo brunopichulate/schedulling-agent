@@ -2,7 +2,9 @@ import json
 import logging
 from datetime import datetime
 from agno.workflow import Workflow
-from src.core.langfuse import setup, shutdown, langfuse_client
+from opentelemetry import trace as otel_trace
+from langfuse import propagate_attributes
+from src.core.langfuse import setup, shutdown
 from src.agents.main.meeting_agents import (
   slot_extractor_agent,
   confirmation_extractor_agent,
@@ -211,14 +213,12 @@ def run_meeting_workflow_with_stream(
       f"Today's date: {datetime.now().isoformat()}. "
       f"User Input: {message}"
     )
-    langfuse = langfuse_client
-    with langfuse.start_as_current_observation(
-      as_type="span",
-      name="meeting-workflow",
-      user_id=user_id,
-      session_id=user_id,
-    ):
-      run_response = slot_extractor_agent.run(enriched)
+    _tracer = otel_trace.get_tracer("meeting-workflow")
+    with propagate_attributes(session_id=user_id, user_id=user_id):
+      with _tracer.start_as_current_span("slot-extractor") as _span:
+        _span.set_attribute("input.value", enriched)
+        run_response = slot_extractor_agent.run(enriched)
+        _span.set_attribute("output.value", str(run_response.content))
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
@@ -275,14 +275,12 @@ def run_meeting_workflow_with_stream(
       )
       return
 
-    langfuse = langfuse_client
-    with langfuse.start_as_current_observation(
-      as_type="span",
-      name="meeting-workflow",
-      user_id=user_id,
-      session_id=user_id,
-    ):
-      run_response = confirmation_extractor_agent.run(message)
+    _tracer = otel_trace.get_tracer("meeting-workflow")
+    with propagate_attributes(session_id=user_id, user_id=user_id):
+      with _tracer.start_as_current_span("confirmation-extractor") as _span:
+        _span.set_attribute("input.value", message)
+        run_response = confirmation_extractor_agent.run(message)
+        _span.set_attribute("output.value", str(run_response.content))
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
