@@ -23,6 +23,7 @@ class _MongoEncoder(json.JSONEncoder):
     except Exception:
       return super().default(obj)
 
+
 # Redis client – shared across all processes (FastAPI + Celery workers)
 _redis = redis.from_url(settings.redis.URL, decode_responses=True)
 

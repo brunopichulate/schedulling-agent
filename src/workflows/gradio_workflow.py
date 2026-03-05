@@ -101,15 +101,12 @@ def _parse_extracted(content, field: str, default=None):
     content,
   )
 
-  # Case 1: Pydantic model
   if hasattr(content, field):
     return getattr(content, field, default)
 
-  # Case 2: dict
   if isinstance(content, dict):
     return content.get(field, default)
 
-  # Case 3: raw JSON string
   if isinstance(content, str):
     try:
       data = json.loads(content)
@@ -131,7 +128,6 @@ def create_content_workflow():
 def run_meeting_workflow_with_stream(message: str):
   user_id = GRADIO_USER_ID
 
-  # ── 1. Load meeting into state on first run ────────────────────────────
   state_dict = get_current_meeting_state(user_id)
 
   if state_dict.get("status") == "INIT" and not state_dict.get("meeting"):
@@ -141,7 +137,6 @@ def run_meeting_workflow_with_stream(message: str):
       return
     state_dict = get_current_meeting_state(user_id)
 
-  # ── 2. Resolve common context ──────────────────────────────────────────
   current_status = state_dict.get("status", "INIT")
 
   donated_name = (
@@ -160,9 +155,6 @@ def run_meeting_workflow_with_stream(message: str):
     else ""
   )
 
-  # ── 3. State machine ───────────────────────────────────────────────────
-
-  # ── INIT: send welcome message and move to WAITING_DONATED_RESPONSE ────
   if current_status == "INIT":
     slots = _build_slot_suggestions(meeting_date_iso)
     date_display = (
@@ -183,9 +175,7 @@ def run_meeting_workflow_with_stream(message: str):
     )
     return
 
-  # ── WAITING_DONATED_RESPONSE ───────────────────────────────────────────
   elif current_status == "WAITING_DONATED_RESPONSE":
-    # Check for 30-second no-response timeout
     if check_timeout(user_id, NO_RESPONSE_TIMEOUT_SECONDS):
       update_meeting_state("DONATED_NO_RESPONSE", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
@@ -195,7 +185,6 @@ def run_meeting_workflow_with_stream(message: str):
       )
       return
 
-    # Ask LLM to extract the slot or detect rejection
     enriched = (
       f"Base meeting_date: {meeting_date_iso}. "
       f"Today's date: {datetime.now().isoformat()}. "
@@ -225,7 +214,6 @@ def run_meeting_workflow_with_stream(message: str):
       update_meeting_state("WAITING_RECEIVED_RESPONSE", user_id)
       record_interaction_time(user_id)
 
-      # Format the slot nicely for the confirmation message
       try:
         dt = datetime.fromisoformat(selected_slot.replace("Z", "+00:00"))
         slot_display = dt.strftime("%d/%m/%Y às %H:%M")
@@ -240,14 +228,12 @@ def run_meeting_workflow_with_stream(message: str):
       )
       return
 
-    # LLM could not extract a valid slot
     yield (
       "Não consegui identificar a data/horário informado. "
       "Poderia informar novamente? (ex: *dia 29*, *às 14h*, *amanhã de manhã*)"
     )
     return
 
-  # ── WAITING_RECEIVED_RESPONSE ──────────────────────────────────────────
   elif current_status == "WAITING_RECEIVED_RESPONSE":
     if check_timeout(user_id, NO_RESPONSE_TIMEOUT_SECONDS):
       update_meeting_state("RECEIVED_NO_RESPONSE", user_id)
@@ -272,7 +258,6 @@ def run_meeting_workflow_with_stream(message: str):
       )
       return
 
-    # Confirmed – read selected_slot before state reset
     selected_slot = state_dict.get("selected_slot", "")
     try:
       dt = datetime.fromisoformat(selected_slot.replace("Z", "+00:00"))
@@ -288,7 +273,6 @@ def run_meeting_workflow_with_stream(message: str):
     )
     return
 
-  # ── Terminal / unknown states ──────────────────────────────────────────
   elif current_status == "HUMAN_INTERVITION_REQUIRED":
     yield "Este atendimento já foi encerrado e encaminhado para intervenção humana."
     return

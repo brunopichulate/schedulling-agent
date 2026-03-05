@@ -65,7 +65,9 @@ async def _process_whatsapp_message(message: WhatsAppMessage):
           "Esse canal é apenas para agendamentos, caso tenha alguma outra dúvida ou sugestão, fale diretamente com o seu principal ponto de contato na Endeavor.",
         )
 
-      logger.info(f"Finished processing message ID {message.id} from {from_number}")
+      logger.info(
+        f"Finished processing message ID {message.id} from {from_number}"
+      )
 
     case _:
       logger.info(f"Unsupported message type: {message.type}")

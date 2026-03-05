@@ -100,15 +100,12 @@ def _parse_extracted(content, field: str, default=None):
     content,
   )
 
-  # Case 1: Pydantic model
   if hasattr(content, field):
     return getattr(content, field, default)
 
-  # Case 2: dict
   if isinstance(content, dict):
     return content.get(field, default)
 
-  # Case 3: raw JSON string
   if isinstance(content, str):
     try:
       data = json.loads(content)
@@ -138,7 +135,6 @@ def run_meeting_workflow_with_stream(
   Generator that drives the meeting scheduling workflow.
   Each yielded value is a tuple: (recipient_phone: str, message_text: str).
   """
-  # ── 1. Load meeting into state on first run ────────────────────────────
   state_dict = get_current_meeting_state(user_id)
 
   if state_dict.get("status") == "INIT" and not state_dict.get("meeting"):
@@ -147,14 +143,15 @@ def run_meeting_workflow_with_stream(
       return
     success = load_potential_meeting_into_state(meeting_id, user_id)
     if not success:
-      yield (user_id, "Nenhuma meeting com status 'Potential' foi encontrada no banco.")
+      yield (
+        user_id,
+        "Nenhuma meeting com status 'Potential' foi encontrada no banco.",
+      )
       return
-    # Register phone numbers so the workflow knows where to route messages
     if donated_phone and received_phone:
       register_phone_numbers(user_id, donated_phone, received_phone)
     state_dict = get_current_meeting_state(user_id)
 
-  # ── 2. Resolve common context ──────────────────────────────────────────
   current_status = state_dict.get("status", "INIT")
 
   _donated_phone = state_dict.get("donated_phone") or user_id
@@ -176,9 +173,6 @@ def run_meeting_workflow_with_stream(
     else ""
   )
 
-  # ── 3. State machine ───────────────────────────────────────────────────
-
-  # ── INIT: send welcome message and move to WAITING_DONATED_RESPONSE ────
   if current_status == "INIT":
     slots = _build_slot_suggestions(meeting_date_iso)
     date_display = (
@@ -202,9 +196,7 @@ def run_meeting_workflow_with_stream(
     )
     return
 
-  # ── WAITING_DONATED_RESPONSE ───────────────────────────────────────────
   elif current_status == "WAITING_DONATED_RESPONSE":
-    # Check for no-response timeout
     if check_timeout(user_id, NO_RESPONSE_TIMEOUT_SECONDS):
       update_meeting_state("DONATED_NO_RESPONSE", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
@@ -214,7 +206,6 @@ def run_meeting_workflow_with_stream(
       )
       return
 
-    # Ask LLM to extract the slot or detect rejection
     enriched = (
       f"Base meeting_date: {meeting_date_iso}. "
       f"Today's date: {datetime.now().isoformat()}. "
@@ -251,7 +242,6 @@ def run_meeting_workflow_with_stream(
       update_meeting_state("WAITING_RECEIVED_RESPONSE", user_id)
       record_interaction_time(user_id)
 
-      # Format the slot nicely for the confirmation message
       try:
         dt = datetime.fromisoformat(selected_slot.replace("Z", "+00:00"))
         slot_display = dt.strftime("%d/%m/%Y às %H:%M")
@@ -269,14 +259,12 @@ def run_meeting_workflow_with_stream(
       )
       return
 
-    # LLM could not extract a valid slot
     yield (
       _donated_phone,
       "Não consegui identificar a data/horário informado. Poderia informar novamente? (ex: *dia 29*, *às 14h*, *amanhã de manhã*)",
     )
     return
 
-  # ── WAITING_RECEIVED_RESPONSE ──────────────────────────────────────────
   elif current_status == "WAITING_RECEIVED_RESPONSE":
     if check_timeout(user_id, NO_RESPONSE_TIMEOUT_SECONDS):
       update_meeting_state("RECEIVED_NO_RESPONSE", user_id)
@@ -308,7 +296,6 @@ def run_meeting_workflow_with_stream(
       )
       return
 
-    # Confirmed – read selected_slot before state reset
     selected_slot = state_dict.get("selected_slot", "")
     try:
       dt = datetime.fromisoformat(selected_slot.replace("Z", "+00:00"))
@@ -323,22 +310,29 @@ def run_meeting_workflow_with_stream(
     )
     update_meeting_state("RECEIVED_CONFIRMED", user_id)
     yield (_donated_phone, confirmation_msg)
-    # Only notify received separately if it's a different number
     if _received_phone != _donated_phone:
       yield (_received_phone, confirmation_msg)
     return
 
-  # ── Terminal / unknown states ──────────────────────────────────────────
   elif current_status == "HUMAN_INTERVITION_REQUIRED":
-    yield (user_id, "Este atendimento já foi encerrado e encaminhado para intervenção humana.")
+    yield (
+      user_id,
+      "Este atendimento já foi encerrado e encaminhado para intervenção humana.",
+    )
     return
 
   elif current_status == "RECEIVED_CONFIRMED":
-    yield (user_id, "A reunião já foi confirmada. Nenhuma ação adicional é necessária.")
+    yield (
+      user_id,
+      "A reunião já foi confirmada. Nenhuma ação adicional é necessária.",
+    )
     return
 
   else:
-    yield (user_id, f"Estado inesperado: `{current_status}`. Por favor, reinicie o fluxo.")
+    yield (
+      user_id,
+      f"Estado inesperado: `{current_status}`. Por favor, reinicie o fluxo.",
+    )
     return
 
 

@@ -28,12 +28,9 @@ async def schedule_meeting(body: ScheduleRequest):
   donated_phone = body.donated_phone_number
   received_phone = body.received_phone_number
 
-  # Guard: reject if there is already an active workflow for this donated number
   current_state = get_current_meeting_state(donated_phone)
   current_status = current_state.get("status", "INIT")
 
-  # A workflow is considered active when the status is not idle/terminal
-  # OR when INIT but a meeting is already loaded (mid-init edge case)
   is_active = current_status not in _TERMINAL_OR_IDLE_STATES or (
     current_status == "INIT" and current_state.get("meeting") is not None
   )
@@ -67,9 +64,7 @@ async def schedule_meeting(body: ScheduleRequest):
     try:
       await whatsapp.send_text_humanized(recipient, message_text)
     except Exception as e:
-      logger.error(
-        f"Failed to send WhatsApp message to {recipient}: {e}"
-      )
+      logger.error(f"Failed to send WhatsApp message to {recipient}: {e}")
 
   return {
     "status": "ok",
