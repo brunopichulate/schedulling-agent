@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime
 from agno.workflow import Workflow
-from src.core.langfuse import setup, shutdown
+from src.core.langfuse import setup, shutdown, langfuse_client
 from src.agents.main.meeting_agents import (
   slot_extractor_agent,
   confirmation_extractor_agent,
@@ -220,7 +220,14 @@ def run_meeting_workflow_with_stream(
       f"Today's date: {datetime.now().isoformat()}. "
       f"User Input: {message}"
     )
-    run_response = slot_extractor_agent.run(enriched)
+    langfuse = langfuse_client
+    with langfuse.start_as_current_observation(
+      as_type="span",
+      name="meeting-workflow",
+      user_id=user_id,
+      session_id=user_id,
+    ):
+      run_response = slot_extractor_agent.run(enriched)
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
@@ -280,7 +287,14 @@ def run_meeting_workflow_with_stream(
       )
       return
 
-    run_response = confirmation_extractor_agent.run(message)
+    langfuse = langfuse_client
+    with langfuse.start_as_current_observation(
+      as_type="span",
+      name="meeting-workflow",
+      user_id=user_id,
+      session_id=user_id,
+    ):
+      run_response = confirmation_extractor_agent.run(message)
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)

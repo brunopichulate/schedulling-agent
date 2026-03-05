@@ -1,5 +1,5 @@
 import logging
-from langfuse import observe, Langfuse
+from langfuse import observe, Langfuse, get_client
 from langfuse.model import TextPromptClient
 from openinference.instrumentation.agno import AgnoInstrumentor
 from src.core.config import settings
@@ -46,4 +46,4 @@ def shutdown():
   logger.info("Langfuse shut down complete")
 
 
-__all__ = ["observe"]
+__all__ = ["observe", "get_client", "langfuse_client"]
