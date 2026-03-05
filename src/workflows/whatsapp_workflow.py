@@ -13,9 +13,9 @@ from src.services.state_machine_service import (
   update_meeting_state,
   record_interaction_time,
   check_timeout,
+  register_phone_numbers,
 )
 
-MEETING_ID = "6487339ae05308a6e921c993"
 NO_RESPONSE_TIMEOUT_SECONDS = 30
 
 logger = logging.getLogger(__name__)
@@ -127,19 +127,38 @@ def create_content_workflow():
   )
 
 
-def run_meeting_workflow_with_stream(message: str, user_id: str):
+def run_meeting_workflow_with_stream(
+  message: str,
+  user_id: str,
+  meeting_id: str | None = None,
+  donated_phone: str | None = None,
+  received_phone: str | None = None,
+):
+  """
+  Generator that drives the meeting scheduling workflow.
+  Each yielded value is a tuple: (recipient_phone: str, message_text: str).
+  """
   # ── 1. Load meeting into state on first run ────────────────────────────
   state_dict = get_current_meeting_state(user_id)
 
   if state_dict.get("status") == "INIT" and not state_dict.get("meeting"):
-    success = load_potential_meeting_into_state(MEETING_ID, user_id)
-    if not success:
-      yield "Nenhuma meeting com status 'Potential' foi encontrada no banco."
+    if not meeting_id:
+      yield (user_id, "Nenhuma meeting_id foi fornecida para iniciar o fluxo.")
       return
+    success = load_potential_meeting_into_state(meeting_id, user_id)
+    if not success:
+      yield (user_id, "Nenhuma meeting com status 'Potential' foi encontrada no banco.")
+      return
+    # Register phone numbers so the workflow knows where to route messages
+    if donated_phone and received_phone:
+      register_phone_numbers(user_id, donated_phone, received_phone)
     state_dict = get_current_meeting_state(user_id)
 
   # ── 2. Resolve common context ──────────────────────────────────────────
   current_status = state_dict.get("status", "INIT")
+
+  _donated_phone = state_dict.get("donated_phone") or user_id
+  _received_phone = state_dict.get("received_phone") or user_id
 
   donated_name = (
     state_dict.get("donated", {}).get("name", "Mentor")
@@ -171,12 +190,15 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
     record_interaction_time(user_id)
 
     yield (
-      f"Olá, {donated_name}! 👋\n\n"
-      f"Temos uma reunião com {received_name} prevista para **{date_display}**.\n\n"
-      f"Escolha um dos horários abaixo ou informe outro de sua preferência "
-      f"(ex: *amanhã*, *dia 29*, *às 13:00*, *de manhã*):\n\n"
-      + "\n".join(slots)
-      + "\n\nCaso não queira agendar, basta dizer."
+      _donated_phone,
+      (
+        f"Olá, {donated_name}! 👋\n\n"
+        f"Temos uma reunião com {received_name} prevista para **{date_display}**.\n\n"
+        f"Escolha um dos horários abaixo ou informe outro de sua preferência "
+        f"(ex: *amanhã*, *dia 29*, *às 13:00*, *de manhã*):\n\n"
+        + "\n".join(slots)
+        + "\n\nCaso não queira agendar, basta dizer."
+      ),
     )
     return
 
@@ -187,8 +209,8 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
       update_meeting_state("DONATED_NO_RESPONSE", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
-        "⏰ O mentor não respondeu a tempo. "
-        "O caso foi encaminhado para intervenção humana."
+        _donated_phone,
+        "⏰ O mentor não respondeu a tempo. O caso foi encaminhado para intervenção humana.",
       )
       return
 
@@ -210,8 +232,8 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
       update_meeting_state("DONATED_REJECTED_SLOTS", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
-        "Entendido, o mentor optou por não agendar. "
-        "O caso foi encaminhado para intervenção humana."
+        _donated_phone,
+        "Entendido, o mentor optou por não agendar. O caso foi encaminhado para intervenção humana.",
       )
       return
 
@@ -230,17 +252,20 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
         slot_display = selected_slot
 
       yield (
-        f"Olá, {received_name}! 👋\n\n"
-        f"O mentor {donated_name} sugeriu o seguinte horário para a reunião:\n\n"
-        f"📅 **{slot_display}**\n\n"
-        f"Você confirma? Responda **Sim** ou **Não**."
+        _received_phone,
+        (
+          f"Olá, {received_name}! 👋\n\n"
+          f"O mentor {donated_name} sugeriu o seguinte horário para a reunião:\n\n"
+          f"📅 **{slot_display}**\n\n"
+          f"Você confirma? Responda **Sim** ou **Não**."
+        ),
       )
       return
 
     # LLM could not extract a valid slot
     yield (
-      "Não consegui identificar a data/horário informado. "
-      "Poderia informar novamente? (ex: *dia 29*, *às 14h*, *amanhã de manhã*)"
+      _donated_phone,
+      "Não consegui identificar a data/horário informado. Poderia informar novamente? (ex: *dia 29*, *às 14h*, *amanhã de manhã*)",
     )
     return
 
@@ -250,8 +275,8 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
       update_meeting_state("RECEIVED_NO_RESPONSE", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
-        "⏰ O mentorado não respondeu a tempo. "
-        "O caso foi encaminhado para intervenção humana."
+        _received_phone,
+        "⏰ O mentorado não respondeu a tempo. O caso foi encaminhado para intervenção humana.",
       )
       return
 
@@ -264,8 +289,8 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
       update_meeting_state("RECEIVED_REJECTED", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
-        f"O mentorado {received_name} não aceitou o horário sugerido. "
-        "O caso foi encaminhado para intervenção humana."
+        _received_phone,
+        f"O mentorado {received_name} não aceitou o horário sugerido. O caso foi encaminhado para intervenção humana.",
       )
       return
 
@@ -277,25 +302,29 @@ def run_meeting_workflow_with_stream(message: str, user_id: str):
     except Exception:
       slot_display = selected_slot or "o horário selecionado"
 
-    update_meeting_state("RECEIVED_CONFIRMED", user_id)
-    yield (
+    confirmation_msg = (
       f"✅ Reunião agendada com sucesso!\n\n"
       f"**{donated_name}** e **{received_name}** se encontrarão em "
       f"**{slot_display}**."
     )
+    update_meeting_state("RECEIVED_CONFIRMED", user_id)
+    yield (_donated_phone, confirmation_msg)
+    # Only notify received separately if it's a different number
+    if _received_phone != _donated_phone:
+      yield (_received_phone, confirmation_msg)
     return
 
   # ── Terminal / unknown states ──────────────────────────────────────────
   elif current_status == "HUMAN_INTERVITION_REQUIRED":
-    yield "Este atendimento já foi encerrado e encaminhado para intervenção humana."
+    yield (user_id, "Este atendimento já foi encerrado e encaminhado para intervenção humana.")
     return
 
   elif current_status == "RECEIVED_CONFIRMED":
-    yield "A reunião já foi confirmada. Nenhuma ação adicional é necessária."
+    yield (user_id, "A reunião já foi confirmada. Nenhuma ação adicional é necessária.")
     return
 
   else:
-    yield f"Estado inesperado: `{current_status}`. Por favor, reinicie o fluxo."
+    yield (user_id, f"Estado inesperado: `{current_status}`. Por favor, reinicie o fluxo.")
     return
 
 
