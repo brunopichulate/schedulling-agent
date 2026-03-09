@@ -1,9 +1,14 @@
+import asyncio
 import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.services.whatsapp import whatsapp
 from src.services.state_machine_service import get_current_meeting_state
+from src.services.whatsapp_window_service import (
+  needs_template,
+  update_last_conversation_time,
+)
 from src.workflows.whatsapp_workflow import run_meeting_workflow_with_stream
 
 router = APIRouter()
@@ -62,7 +67,16 @@ async def schedule_meeting(body: ScheduleRequest):
     received_phone=received_phone,
   ):
     try:
+      if needs_template(recipient):
+        logger.info(
+          f"24h window expired for {recipient} — sending hello_world template"
+        )
+        await whatsapp.send_template(recipient, "hello_world")
+        # Give WhatsApp's servers a moment to register the template
+        # and open the conversation window before sending the next message.
+        await asyncio.sleep(2)
       await whatsapp.send_text_humanized(recipient, message_text)
+      update_last_conversation_time(recipient)
     except Exception as e:
       logger.error(f"Failed to send WhatsApp message to {recipient}: {e}")
 
