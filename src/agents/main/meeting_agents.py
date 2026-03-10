@@ -10,15 +10,19 @@ class ExtractedSlot(BaseModel):
   is_rejected: bool = Field(
     description="True if the user rejected the suggestions, False otherwise."
   )
-  selected_date_time: Optional[str] = Field(
-    default=None,
-    description="The selected date and time in ISO format (YYYY-MM-DDTHH:MM:SS.000+00:00). Null if rejected.",
+  selected_date_times: list[str] = Field(
+    default_factory=list,
+    description="The selected dates and times in ISO format (YYYY-MM-DDTHH:MM:SS.000+00:00). Empty if rejected or if less than 2 options were provided.",
   )
 
 
 class ExtractedConfirmation(BaseModel):
   is_rejected: bool = Field(
     description="True if the user rejected or said 'no', False if they confirmed/said 'yes'."
+  )
+  selected_option_index: Optional[int] = Field(
+    default=None,
+    description="The integer index (1, 2, 3...) of the option chosen by the user. Null if rejected."
   )
 
 

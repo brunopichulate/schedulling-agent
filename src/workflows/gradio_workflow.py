@@ -168,6 +168,7 @@ def run_meeting_workflow_with_stream(message: str):
     yield (
       f"Olá, {donated_name}! 👋\n\n"
       f"Temos uma reunião com {received_name} prevista para **{date_display}**.\n\n"
+      f"Para agendar, envie pelo menos 2 horários disponíveis para que possamos oferecer opções ao participante.\n\n"
       f"Escolha um dos horários abaixo ou informe outro de sua preferência "
       f"(ex: *amanhã*, *dia 29*, *às 13:00*, *de manhã*):\n\n"
       + "\n".join(slots)
@@ -194,8 +195,8 @@ def run_meeting_workflow_with_stream(message: str):
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
-    selected_slot = _parse_extracted(
-      extracted, "selected_date_time", default=None
+    selected_slots = _parse_extracted(
+      extracted, "selected_date_times", default=[]
     )
 
     if is_rejected:
@@ -207,30 +208,41 @@ def run_meeting_workflow_with_stream(message: str):
       )
       return
 
-    if selected_slot:
+    if selected_slots and len(selected_slots) >= 2:
       update_meeting_state(
-        "DONATED_SELECTED_SLOT", user_id, selection=selected_slot
+        "DONATED_SELECTED_SLOT", user_id, selection=selected_slots
       )
       update_meeting_state("WAITING_RECEIVED_RESPONSE", user_id)
       record_interaction_time(user_id)
 
-      try:
-        dt = datetime.fromisoformat(selected_slot.replace("Z", "+00:00"))
-        slot_display = dt.strftime("%d/%m/%Y às %H:%M")
-      except Exception:
-        slot_display = selected_slot
+      formatted_slots = []
+      for idx, slot in enumerate(selected_slots, 1):
+        try:
+          dt = datetime.fromisoformat(slot.replace("Z", "+00:00"))
+          slot_display = dt.strftime("%d/%m/%Y às %H:%M")
+        except Exception:
+          slot_display = slot
+        formatted_slots.append(f"{idx}. {slot_display}")
+      
+      slots_text = "\n".join(formatted_slots)
 
       yield (
         f"Olá, {received_name}! 👋\n\n"
-        f"O mentor {donated_name} sugeriu o seguinte horário para a reunião:\n\n"
-        f"📅 **{slot_display}**\n\n"
-        f"Você confirma? Responda **Sim** ou **Não**."
+        f"O mentor {donated_name} sugeriu os seguintes horários para a reunião:\n\n"
+        f"{slots_text}\n\n"
+        f"Qual dessas opções você prefere? (Responda com o número da opção ou o horário, ou diga se não puder em nenhum)."
+      )
+      return
+
+    if selected_slots and len(selected_slots) == 1:
+      yield (
+        "Por favor, forneça pelo menos duas opções de horário para o mentorado escolher (ex: *segunda às 14h* ou *terça às 10h*)."
       )
       return
 
     yield (
-      "Não consegui identificar a data/horário informado. "
-      "Poderia informar novamente? (ex: *dia 29*, *às 14h*, *amanhã de manhã*)"
+      "Não consegui identificar os horários informados. "
+      "Poderia informar pelo menos duas opções de horários? (ex: *dia 29 às 14h* ou *amanhã de manhã*)"
     )
     return
 
@@ -244,28 +256,52 @@ def run_meeting_workflow_with_stream(message: str):
       )
       return
 
-    run_response = confirmation_extractor_agent.run(message)
+    selected_slots = state_dict.get("selected_slot", [])
+    
+    # Provide the LLM with the numbered list of options so it can return purely the INT index
+    enriched_msg = (
+      f"User Response: {message}\n\n"
+      f"Available Options ({len(selected_slots)}):\n"
+    )
+    for idx, slot in enumerate(selected_slots, 1):
+      try:
+        dt = datetime.fromisoformat(slot.replace("Z", "+00:00"))
+        slot_display = dt.strftime("%d/%m/%Y às %H:%M")
+      except Exception:
+        slot_display = slot
+      enriched_msg += f"Option {idx}: {slot_display}\n"
+
+    run_response = confirmation_extractor_agent.run(enriched_msg)
     extracted = run_response.content
 
     is_rejected = _parse_extracted(extracted, "is_rejected", default=False)
+    selected_option_index = _parse_extracted(extracted, "selected_option_index", default=None)
 
     if is_rejected:
       update_meeting_state("RECEIVED_REJECTED", user_id)
       update_meeting_state("HUMAN_INTERVITION_REQUIRED", user_id)
       yield (
-        f"O mentorado {received_name} não aceitou o horário sugerido. "
+        f"O mentorado {received_name} não aceitou os horários sugeridos. "
         "O caso foi encaminhado para intervenção humana."
       )
       return
 
-    selected_slot = state_dict.get("selected_slot", "")
+    if not selected_option_index or not isinstance(selected_option_index, int) or selected_option_index < 1 or selected_option_index > len(selected_slots):
+      yield (
+        "Não consegui identificar qual opção você escolheu. Poderia responder visualmente com o número da opção (ex: 1 ou 2) ou confirmar o horário exato desejado?",
+      )
+      return
+
+    # User gave us a valid index (1-based), fetch the exact ISO string
+    selected_time = selected_slots[selected_option_index - 1]
+
     try:
-      dt = datetime.fromisoformat(selected_slot.replace("Z", "+00:00"))
+      dt = datetime.fromisoformat(selected_time.replace("Z", "+00:00"))
       slot_display = dt.strftime("%d/%m/%Y às %H:%M")
     except Exception:
-      slot_display = selected_slot or "o horário selecionado"
+      slot_display = selected_time
 
-    update_meeting_state("RECEIVED_CONFIRMED", user_id)
+    update_meeting_state("RECEIVED_CONFIRMED", user_id, selection=selected_time)
     yield (
       f"✅ Reunião agendada com sucesso!\n\n"
       f"**{donated_name}** e **{received_name}** se encontrarão em "
