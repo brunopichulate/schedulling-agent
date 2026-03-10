@@ -41,7 +41,10 @@ async def _process_whatsapp_message(message: WhatsAppMessage):
       # Check if this user has an active meeting workflow.
       # WhatsApp webhook delivers numbers without '+', but the schedule
       # request stores them with '+'. Try both variants.
+      from src.services.state_machine_service import update_meeting_state
+
       active_states = {
+        "WAITING_FOR_TEMPLATE_REPLY",
         "WAITING_DONATED_RESPONSE",
         "WAITING_RECEIVED_RESPONSE",
       }
@@ -53,7 +56,15 @@ async def _process_whatsapp_message(message: WhatsAppMessage):
         if state.get("status") in active_states:
           workflow_user_id = "+" + from_number
 
-      if state.get("status") in active_states:
+      current_status = state.get("status")
+
+      if current_status == "WAITING_FOR_TEMPLATE_REPLY":
+          # User responded to template, let's trigger the initial workflow message.
+          logger.info(f"User {workflow_user_id} replied to template. Starting workflow.")
+          update_meeting_state("INIT", workflow_user_id)
+          current_status = "INIT"
+
+      if current_status in active_states or current_status == "INIT":
         # Route through the meeting workflow
         for recipient, response_text in run_meeting_workflow_with_stream(
           message=user_text,

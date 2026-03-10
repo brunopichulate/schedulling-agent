@@ -4,7 +4,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.services.whatsapp import whatsapp
-from src.services.state_machine_service import get_current_meeting_state
+from src.services.state_machine_service import (
+  get_current_meeting_state,
+  update_meeting_state,
+  load_potential_meeting_into_state,
+  register_phone_numbers,
+)
 from src.services.whatsapp_window_service import (
   needs_template,
   update_last_conversation_time,
@@ -53,12 +58,31 @@ async def schedule_meeting(body: ScheduleRequest):
         "current_status": current_status,
       },
     )
-
   logger.info(
     f"Schedule triggered for meeting {meeting_id}: "
     f"donated={donated_phone}, received={received_phone}"
   )
 
+  success = load_potential_meeting_into_state(meeting_id, donated_phone)
+  if not success:
+     raise HTTPException(status_code=404, detail="Meeting potential not found")
+  
+  register_phone_numbers(donated_phone, donated_phone, received_phone)
+
+  if needs_template(donated_phone):
+    logger.info(f"24h window expired for {donated_phone} — sending hello_world template and waiting for reply")
+    update_meeting_state("WAITING_FOR_TEMPLATE_REPLY", donated_phone)
+    await whatsapp.send_template(donated_phone, "hello_world")
+    
+    return {
+      "status": "ok",
+      "meeting_id": meeting_id,
+      "message": "Template sent. Waiting for reply before starting workflow.",
+      "donated_phone_number": donated_phone,
+      "received_phone_number": received_phone,
+    }
+
+  # If window is open, run workflow normally
   for recipient, message_text in run_meeting_workflow_with_stream(
     message="",
     user_id=donated_phone,
@@ -67,14 +91,6 @@ async def schedule_meeting(body: ScheduleRequest):
     received_phone=received_phone,
   ):
     try:
-      if needs_template(recipient):
-        logger.info(
-          f"24h window expired for {recipient} — sending hello_world template"
-        )
-        await whatsapp.send_template(recipient, "hello_world")
-        # Give WhatsApp's servers a moment to register the template
-        # and open the conversation window before sending the next message.
-        await asyncio.sleep(2)
       await whatsapp.send_text_humanized(recipient, message_text)
       update_last_conversation_time(recipient)
     except Exception as e:
