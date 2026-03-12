@@ -7,7 +7,7 @@
 
 Endeavor AI is an AI-powered scheduling agent that automates mentoring session scheduling via WhatsApp, eliminating manual back-and-forth between mentors and founders to find a common time slot.
 
-Part of Endeavor Brasil's **Low/Tech-Touch Business Models** initiative (2026.1 cycle): validate whether Endeavor can support founders at scale without increasing SEE team headcount. The agent covers the scheduling step in the mentoring happy path:
+Part of Endeavor Brasil's **Low/Tech-Touch Business Models** initiative (2026.1 cycle): validate whether Endeavor can support founders at scale without increasing AEE team headcount. The agent covers the scheduling step in the mentoring happy path:
 
 ```
 Checkpoint → Priorities → RecSys → My List → Book Meeting → [Scheduling Agent] → Calendar Invite
@@ -203,7 +203,8 @@ The current system handles only the happy path with 2 agents and a linear flow. 
 | Gradio | Minimal web UI for testing the agent without WhatsApp |
 | Template | Meta-approved message required to initiate a WhatsApp Business API conversation |
 | Good Ready | Cluster of Endeavor companies ready for the paid tech-touch model |
-| SEE | Seleção de Empreendedores Endeavor — team that supports founders |
+| SEE | Seleção de Empreendedores Endeavor — team responsible for selecting new entrepreneurs into the Endeavor network |
+| AEE | Apoio a Empreendedores Endeavor — team that supports and manages mentoring relationships for active portfolio companies; runs the scheduling flow |
 | ZRP | Partner development company (Brunão, Paulo, Pedro G.) |
 | Concierge Test | Wizard of Oz: manually simulate the agent without the user knowing |
 | aguardando_intervencao_humana | State machine state for unresolved/ambiguous conversations |
