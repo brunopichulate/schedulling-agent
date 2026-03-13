@@ -22,11 +22,11 @@
 | # | Stage | Lead Role | Artifact | Status |
 |---|---|---|---|---|
 | 1 | Problem Framing | PM + Strategist | [`01-problem-framing.md`](01-problem-framing.md) | ✅ |
-| 2 | Current State Journey Map | Researcher | `02-current-journey.md` | ⬜ |
-| 3 | JTBD Map | Researcher + PM | `03-jtbd.md` | ⬜ |
-| 4 | Assumption Map | PM + Strategist | `04-assumption-map.md` | ⬜ |
-| 5 | Edge Case Taxonomy | Engineer + Researcher | `05-edge-cases-deep.md` | ⬜ |
-| 6 | Flow Mapping & Multi-Agent Routing | Engineer + PM | `06-flow-map.md` | ⬜ |
+| 2 | Current State Journey Map | Researcher | [`02-current-journey.md`](02-current-journey.md) | ✅ |
+| 3 | JTBD Map | Researcher + PM | [`03-jtbd.md`](03-jtbd.md) | ✅ |
+| 4 | Assumption Map | PM + Strategist | [`04-assumption-map.md`](04-assumption-map.md) | ✅ |
+| 5 | Edge Case Taxonomy | Engineer + Researcher | [`05-edge-cases-deep.md`](05-edge-cases-deep.md) | ✅ |
+| 6 | Flow Mapping & Multi-Agent Routing | Engineer + PM | [`06-flow-map.md`](06-flow-map.md) | ✅ |
 | 7 | Success Metrics & Outcome Model | PM + Strategist | `07-metrics.md` | ⬜ |
 | 8 | Full PRD | PM | `08-prd.md` | ⬜ |
 
@@ -41,35 +41,39 @@
 
 ---
 
-### Stage 2 — Current State Journey Map ⬜
+### Stage 2 — Current State Journey Map ✅
 **Central question:** How does the flow work today (without the agent)? Where are the real pain points?
 **Key outputs:** step-by-step current journey across all actors, friction points per step, emotional context, cost metrics.
+**File:** [`02-current-journey.md`](02-current-journey.md)
 
 ---
 
-### Stage 3 — JTBD Map ⬜
+### Stage 3 — JTBD Map ✅
 **Central question:** What is the real "job" each actor is trying to do?
 **Key outputs:** functional/emotional/social jobs for AEE, mentor, and founder; Switch Diagram (forces toward and against adoption).
+**File:** [`03-jtbd.md`](03-jtbd.md)
 
 ---
 
-### Stage 4 — Assumption Map ⬜
+### Stage 4 — Assumption Map ✅
 **Central question:** What must be true for the agent to work? Which beliefs are most risky?
-**Key outputs:** H1–H20+ hypothesis list, Desirability/Feasibility/Viability axes, risk × evidence 2×2, validation experiments.
+**Key outputs:** H1–H15 hypothesis list, risk × evidence 2×2, top 5 deep-dives, validation roadmap.
+**File:** [`04-assumption-map.md`](04-assumption-map.md)
 
 ---
 
-### Stage 5 — Edge Case Taxonomy ⬜
+### Stage 5 — Edge Case Taxonomy ✅
 **Central question:** What can go wrong at each point in the journey, for each persona?
-**Key outputs:** full edge case list (mentor on vacation, secretary, timeout, rejection, wrong number, etc.), frequency × impact matrix, resolution status.
+**Key outputs:** 12-case taxonomy, frequency × impact matrix, priority tiers, architectural implications, 3 new agents identified.
 **Expands:** `docs/edge-cases.md`
+**File:** [`05-edge-cases-deep.md`](05-edge-cases-deep.md)
 
 ---
 
-### Stage 6 — Flow Mapping & Multi-Agent Routing ⬜
+### Stage 6 — Flow Mapping & Multi-Agent Routing ✅
 **Central question:** What are all possible flows beyond the happy path? When does the agent hand off to a human, and through which channel?
-**Key outputs:** complete flow map (all branches), human handoff criteria, channel analysis (Slack/WhatsApp/email), expanded state machine, new agents needed.
-**Note:** may become a `/flow-map` skill in the future.
+**Key outputs:** 11 flows mapped (3 new), 6 critical gaps found in current implementation, expanded state machine (+5 states), 4 new agents defined.
+**File:** [`06-flow-map.md`](06-flow-map.md)
 
 ---
 
