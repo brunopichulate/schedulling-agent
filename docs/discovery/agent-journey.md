@@ -1,223 +1,145 @@
-# Agent Journey — Jornada Simplificada
+# Agent Journey — Jornada dos Atores
 
-> Versão: 1.0 | Data: 2026-03-16
-> Público: PM, stakeholders, AEE, Arua
-> Sem detalhes técnicos — foco na experiência de cada ator
+> Versão: 2.0 | Data: 2026-03-16
 
 ---
 
-## Happy Path — O que cada ator vive
+## Happy Path — Swimlane
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant C as 🖥️ Connect
-    participant AG as 🤖 Agente
-    participant M as 👤 Mentor
-    participant F as 🏢 Founder
-    participant AEE as 👩 AEE
-
-    C->>AG: Trigger: mentoria X pronta para agendar
-    Note over AG: Agente carrega dados da reunião<br/>(mentor, founder, empresa)
-
-    AG->>M: WhatsApp: "Olá [Mentor], você foi convidado<br/>para mentoria com [Empresa].<br/>Quais seus horários disponíveis?"
-
-    M->>AG: "Terça 14h ou quinta de manhã"
-
-    Note over AG: SlotExtractorAgent interpreta<br/>e formata os horários
-
-    AG->>F: WhatsApp: "Olá [Founder], o mentor [X]<br/>tem disponibilidade em:<br/>1. Terça, 14h<br/>2. Quinta, 9h<br/>Qual prefere?"
-
-    F->>AG: "O primeiro tá ótimo"
-
-    Note over AG: ConfirmationExtractorAgent<br/>confirma: opção 1 = Terça 14h
-
-    AG->>M: WhatsApp: "✅ Confirmado! Terça, 14h com [Empresa]"
-    AG->>F: WhatsApp: "✅ Confirmado! Terça, 14h com [Mentor]"
-    AG->>C: Criar Google Calendar invite<br/>(@endeavor como organizador)
-
-    Note over AEE: AEE recebe convite no calendário<br/>como qualquer outro participante.<br/>Não precisou intervir.
-```
-
----
-
-## Quando algo dá errado — O que o AEE vê
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant AG as 🤖 Agente
-    participant M as 👤 Mentor
-    participant AEE as 👩 AEE
-
-    AG->>M: "Quais seus horários disponíveis?"
-
-    Note over M: Mentor não responde por 48h
-
-    AG->>M: "Olá! Só lembrando sobre a mentoria com [Empresa]. Consegue me passar sua disponibilidade?"
-
-    Note over M: Ainda sem resposta após 24h
-
-    AG->>AEE: ⚠️ Notificação: "Mentor [X] não respondeu após 72h.<br/>Mentoria com [Empresa] precisa de atenção."
-
-    Note over AEE: AEE assume o contato manualmente<br/>com contexto completo do que já aconteceu
-```
-
----
-
-## Visão Swimlane — Happy Path Completo
-
-```mermaid
-flowchart TD
-    subgraph CONNECT["🖥️ Connect (sistema)"]
-        TR[Trigger automático\napós 'Invite Mentor']
+flowchart LR
+    subgraph CONNECT["🖥️ Connect"]
+        C1([Invite Mentor\nenviado])
+        C2([GCal invite\ncriado])
     end
 
     subgraph AGENTE["🤖 Agente"]
-        A1[Carrega dados\nda mentoria]
-        A2[Extrai slots\ndo texto do mentor]
-        A3[Formata opções\npara o founder]
-        A4[Identifica slot\nescolhido]
-        A5[Envia confirmações\npara ambos]
-        A6[Cria GCal invite]
+        A1[Carrega\ndados]
+        A2[Extrai\nslots]
+        A3[Formata\nopções]
+        A4[Confirma\nslot]
+        A5[Envia\nconfirmações]
     end
 
     subgraph MENTOR["👤 Mentor"]
-        M1[Recebe mensagem\nno WhatsApp]
-        M2[Responde com\nhorários disponíveis]
-        M3[Recebe confirmação\nde data e hora]
+        M1[Recebe\nmensagem]
+        M2[Responde\ncom horários]
+        M3[Recebe\nconfirmação ✅]
     end
 
     subgraph FOUNDER["🏢 Founder"]
-        F1[Recebe opções\nde horário]
-        F2[Escolhe horário\npreferido]
-        F3[Recebe confirmação\nde data e hora]
+        F1[Recebe\nopções]
+        F2[Escolhe\nhorário]
+        F3[Recebe\nconfirmação ✅]
     end
 
     subgraph AEE["👩 AEE"]
-        AEE1[Monitora painel\nem exceções]
-        AEE2[Recebe convite\nno calendário]
+        AEE1[Recebe GCal\ninvite ✅]
     end
 
-    TR --> A1 --> M1 --> M2 --> A2 --> A3 --> F1 --> F2 --> A4 --> A5
+    C1 --> A1 --> M1 --> M2 --> A2 --> A3 --> F1 --> F2 --> A4 --> A5
     A5 --> M3
     A5 --> F3
-    A5 --> A6 --> AEE2
-    AEE1 -.->|só intervém\nse necessário| AGENTE
+    A5 --> C2 --> AEE1
 ```
 
 ---
 
-## Os 3 Cenários em Uma Página
+## Jornada do Mentor
 
-| Cenário | Mentor | Founder | AEE | Resultado |
-|---|---|---|---|---|
-| **😊 Happy path** | Responde com 2+ horários | Escolhe um | Não intervém | GCal invite criado automaticamente |
-| **😕 Ambiguidade** | Responde vagamente ("qualquer manhã") | — | — | Agente pede esclarecimento uma vez. Se resolver → happy path. Se não → AEE notificado |
-| **😓 Sem resposta** | Não responde em 48h | — | — | Agente faz 1 follow-up. Após +24h → AEE notificado com contexto completo |
-| **😤 Recusa** | "Não quero falar com robô" | — | — | Agente responde com respeito e aciona AEE imediatamente |
-| **❌ Founder rejeita tudo** | Propôs horários | Rejeita todos | — | AEE notificado para mediar nova rodada |
+```mermaid
+flowchart TD
+    M_START([Recebe WhatsApp\ndo agente]) --> M_READ{Lê a\nmensagem}
 
----
+    M_READ -->|Responde normalmente| M_TEXT[Envia horários\nem texto]
+    M_READ -->|Manda áudio| M_AUDIO[Agente pede\nque mande texto]
+    M_AUDIO --> M_TEXT
 
-## Experiência por Ator
+    M_TEXT --> M_EXT{Agente\nextrai slots}
+    M_EXT -->|2+ slots claros| M_OK[✅ Slots recebidos\nFounder é contactado]
+    M_EXT -->|Ambíguo| M_CLARIFY[Agente pede\nclarificação]
+    M_CLARIFY --> M_TEXT
+    M_EXT -->|Só 1 slot| M_ONE[Agente pede\nmais opções]
+    M_ONE --> M_TEXT
 
-### 👤 Mentor — O que ele vive
+    M_OK --> M_WAIT([Aguarda\nfounder escolher])
+    M_WAIT --> M_CONFIRM([✅ Recebe confirmação\ncom data e hora])
 
-```
-[Recebe no WhatsApp]
-─────────────────────────────────────────────────────
-"Olá [Nome]! 👋
+    M_READ -->|Ignora / não responde| M_TIMEOUT[Agente faz\nfollow-up após 48h]
+    M_TIMEOUT --> M_READ2{Responde?}
+    M_READ2 -->|Sim| M_TEXT
+    M_READ2 -->|Não| M_HI([⚠️ AEE assume\no contato])
 
-Você foi confirmado como mentor para [Empresa].
+    M_READ -->|Recusa o agente| M_REFUSE([⚠️ AEE assume\nimediatamente])
 
-Para organizarmos a reunião, poderia me passar
-2 ou mais opções de horário disponíveis para você?"
-─────────────────────────────────────────────────────
-
-[Responde]
-"Pode ser terça depois das 14h ou qualquer
-manhã de quinta ou sexta"
-
-[Recebe confirmação]
-─────────────────────────────────────────────────────
-"✅ Perfeito! Reunião confirmada:
-
-📅 Terça-feira, 15h
-🏢 [Empresa] — [Nome do Founder]
-
-Você receberá o convite no seu e-mail. Obrigado!"
-─────────────────────────────────────────────────────
-```
-
-**Tempo total de interação: ~2 minutos**
-**Número de mensagens recebidas: 2**
-
----
-
-### 🏢 Founder — O que ele vive
-
-```
-[Recebe no WhatsApp — após mentor confirmar disponibilidade]
-─────────────────────────────────────────────────────
-"Olá [Nome]! 👋
-
-O mentor [X] está disponível nos seguintes horários:
-
-1. Terça-feira, 14h
-2. Quinta-feira, 9h
-3. Sexta-feira, 10h
-
-Qual horário você prefere?"
-─────────────────────────────────────────────────────
-
-[Responde]
-"O primeiro"
-
-[Recebe confirmação]
-─────────────────────────────────────────────────────
-"✅ Reunião confirmada!
-
-📅 Terça-feira, 14h
-👤 Mentor: [Nome do Mentor]
-
-Você receberá o convite no seu e-mail. Bom papo! 🚀"
-─────────────────────────────────────────────────────
-```
-
-**Tempo total de interação: ~1 minuto**
-**Número de mensagens recebidas: 2**
-
----
-
-### 👩 AEE — O que ela vive
-
-**Hoje (manual):**
-```
-1. Clica em "Invite Mentor" no Connect
-2. Abre WhatsApp pessoal
-3. Escreve mensagem improvisada para o mentor
-4. Aguarda resposta (horas ou dias)
-5. Encaminha horários para o founder
-6. Aguarda founder escolher
-7. Abre Google Calendar
-8. Cria evento manualmente
-9. Atualiza Connect manualmente
-─────────────────────────
-⏱ Tempo médio: 30–60 min distribuídos ao longo de dias
-```
-
-**Com o agente:**
-```
-1. Clica em "Invite Mentor" no Connect (ou aciona o agente)
-2. ☕ Aguarda
-3. Recebe o GCal invite no e-mail como qualquer participante
-─────────────────────────
-⏱ Tempo médio: < 5 min (só monitoramento de exceções)
+    style M_START fill:#4CAF50,color:#fff,stroke:none
+    style M_CONFIRM fill:#2196F3,color:#fff,stroke:none
+    style M_HI fill:#FF9800,color:#fff,stroke:none
+    style M_REFUSE fill:#FF9800,color:#fff,stroke:none
+    style M_OK fill:#4CAF50,color:#fff,stroke:none
 ```
 
 ---
 
-## O Agente em Uma Frase
+## Jornada do Founder
 
-> O agente substitui o AEE como intermediário de logística entre mentor e founder — conduzindo a troca de mensagens, extraindo horários, confirmando a escolha, e criando o convite no calendário — sem que nenhuma das partes precise saber que é um sistema automatizado.
+```mermaid
+flowchart TD
+    F_START([Recebe WhatsApp\ncom opções de horário]) --> F_READ{Lê as\nopções}
+
+    F_READ -->|Escolhe uma opção| F_TEXT[Responde\nem texto]
+    F_TEXT --> F_EXT{Agente\nidentifica slot}
+    F_EXT -->|Claro| F_OK([✅ Recebe\nconfirmação])
+    F_EXT -->|Ambíguo| F_CLARIFY[Agente pede\nre-seleção]
+    F_CLARIFY --> F_TEXT
+
+    F_READ -->|Rejeita todos| F_REJECT([⚠️ AEE assume\npara mediar])
+    F_READ -->|Não responde| F_TIMEOUT[Agente faz\nfollow-up após 48h]
+    F_TIMEOUT --> F_READ2{Responde?}
+    F_READ2 -->|Sim| F_TEXT
+    F_READ2 -->|Não| F_HI([⚠️ AEE assume\no contato])
+    F_READ -->|Recusa o agente| F_REFUSE([⚠️ AEE assume\nimediatamente])
+
+    style F_START fill:#4CAF50,color:#fff,stroke:none
+    style F_OK fill:#2196F3,color:#fff,stroke:none
+    style F_REJECT fill:#FF9800,color:#fff,stroke:none
+    style F_HI fill:#FF9800,color:#fff,stroke:none
+    style F_REFUSE fill:#FF9800,color:#fff,stroke:none
+```
+
+---
+
+## Jornada do AEE
+
+```mermaid
+flowchart TD
+    AEE_START([Aciona o agente\nno Connect]) --> AEE_WAIT[Aguarda\nem background]
+
+    AEE_WAIT --> AEE_CHECK{Agente\nprecisa de ajuda?}
+    AEE_CHECK -->|Não — tudo ok| AEE_GCAL([✅ Recebe GCal\ninvite no e-mail])
+    AEE_CHECK -->|Sim — notificação| AEE_NOTIFY[Recebe alerta\ncom contexto completo]
+
+    AEE_NOTIFY --> AEE_ACT{Tipo de\nproblema}
+    AEE_ACT -->|Mentor sem resposta| AEE_CALL[Contato\nmanual com mentor]
+    AEE_ACT -->|Slots rejeitados| AEE_MEDIATE[Mediar nova\nrodada de horários]
+    AEE_ACT -->|Recusou agente| AEE_TAKEOVER[Assumir conversa\nmanualmente]
+
+    AEE_CALL --> AEE_RESOLVE([Resolução\nmanual])
+    AEE_MEDIATE --> AEE_RESOLVE
+    AEE_TAKEOVER --> AEE_RESOLVE
+
+    style AEE_START fill:#4CAF50,color:#fff,stroke:none
+    style AEE_GCAL fill:#2196F3,color:#fff,stroke:none
+    style AEE_RESOLVE fill:#FF9800,color:#fff,stroke:none
+```
+
+---
+
+## Legenda
+
+| Cor | Significado |
+|---|---|
+| 🟢 Verde | Início / sucesso |
+| 🔵 Azul | Ação do agente concluída |
+| 🟠 Laranja | Intervenção humana necessária |
+| ⬜ Cinza | Passo intermediário |
