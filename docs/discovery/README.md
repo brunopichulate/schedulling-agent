@@ -17,6 +17,15 @@
 
 ---
 
+## Visual Artifacts
+
+| Artifact | Público | Link |
+|---|---|---|
+| Flow Diagram (técnico completo) | Devs, Tech Lead, PM | [`flow-diagram.md`](flow-diagram.md) |
+| Agent Journey (simplificado) | PM, AEE, Stakeholders | [`agent-journey.md`](agent-journey.md) |
+
+---
+
 ## Artifact Index
 
 | # | Stage | Lead Role | Artifact | Status |
@@ -27,7 +36,7 @@
 | 4 | Assumption Map | PM + Strategist | [`04-assumption-map.md`](04-assumption-map.md) | ✅ |
 | 5 | Edge Case Taxonomy | Engineer + Researcher | [`05-edge-cases-deep.md`](05-edge-cases-deep.md) | ✅ |
 | 6 | Flow Mapping & Multi-Agent Routing | Engineer + PM | [`06-flow-map.md`](06-flow-map.md) | ✅ |
-| 7 | Success Metrics & Outcome Model | PM + Strategist | `07-metrics.md` | ⬜ |
+| 7 | Success Metrics & Outcome Model | PM + Strategist | [`07-metrics.md`](07-metrics.md) | ✅ |
 | 8 | Full PRD | PM | `08-prd.md` | ⬜ |
 
 ---
@@ -77,9 +86,10 @@
 
 ---
 
-### Stage 7 — Success Metrics & Outcome Model ⬜
+### Stage 7 — Success Metrics & Outcome Model ✅
 **Central question:** How do we know we solved the problem?
-**Key outputs:** North Star Metric, leading/lagging indicators, guardrails, instrumentation gaps.
+**Key outputs:** North Star Metric, 10 leading/lagging indicators, 4 guardrails, instrumentation gap list, pilot experiment design.
+**File:** [`07-metrics.md`](07-metrics.md)
 
 ---
 
