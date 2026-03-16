@@ -33,9 +33,10 @@ from src.workflows.meeting_shared.messages import (
     build_already_confirmed_message,
     build_unexpected_state_message,
 )
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
-NO_RESPONSE_TIMEOUT_SECONDS = 30
+NO_RESPONSE_TIMEOUT_SECONDS = settings.no_response_timeout_seconds
 
 def handle_init(context: MeetingContext, message: str, use_bold_asterisks: bool = True) -> Generator[Tuple[str, str], None, None]:
     slots = build_slot_suggestions(context.meeting_date_iso)

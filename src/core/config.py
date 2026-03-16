@@ -76,6 +76,9 @@ class Settings(BaseSettings):
   meta: MetaSettings
   mongodb: MongoDBSettings
 
+  # Agent behavior
+  no_response_timeout_seconds: int = 172800  # 48h — override with NO_RESPONSE_TIMEOUT_SECONDS in .env
+
 
 def load_settings():
   """Load settings before initializing logging and telemetry."""
