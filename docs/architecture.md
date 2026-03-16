@@ -146,3 +146,138 @@ Langfuse project: `endeavor-agents` (account: `web@endeavor`)
 - MongoDB conversation state is keyed by phone number — naturally partitionable
 - Agents are stateless per call — safe to parallelize
 - WhatsApp Cloud API has rate limits (1,000 messages/sec per phone number) — Redis-based rate limiting in place
+
+---
+
+## Motor de Negociação (Vai-e-Vem)
+
+O agente não é linear. Ele funciona como uma secretária: coleta disponibilidade de um lado, leva ao outro, e repete até encontrar um slot em comum ou decidir que precisa de ajuda humana.
+
+### Fluxo de ciclos
+
+```
+Ciclo 1 (obrigatório):
+  Mentor fornece slots
+  → Founder recebe opções
+  → Founder escolhe ✅ → confirma (happy path)
+  → Founder rejeita + oferece contra-disponibilidade → Ciclo 2
+
+Ciclo 2..N (renegociação):
+  Mentor recebe contra-disponibilidade do founder → fornece novos slots
+  → Founder escolhe ✅ → confirma
+  → Founder rejeita novamente → HI se N >= MAX_NEGOTIATION_ROUNDS
+
+Cancelamento/remarcação (qualquer ciclo, qualquer lado):
+  → Notifica o outro lado + AEE imediatamente
+  → Inicia novo ciclo de negociação OU encerra o fluxo
+  → Se pós-confirmação: GCal deve ser cancelado/atualizado
+```
+
+### Dados a preservar entre rounds
+
+```python
+# Extensão do MeetingContext (src/workflows/meeting_shared/models.py)
+current_round: int = 0
+max_rounds: int  # de config — recomendado: 2
+
+@dataclass
+class NegotiationRound:
+    round_number: int
+    initiator: Literal["mentor", "founder"]
+    slots_offered: list[str]       # slots oferecidos por quem iniciou o round
+    counter_availability: str      # contra-disponibilidade do outro lado (se houver)
+    outcome: Literal["accepted", "rejected_with_counter", "rejected_no_alternative", "cancelled"]
+```
+
+### Regras de escalonamento
+
+| Condição | Ação |
+|---|---|
+| `current_round >= max_rounds` sem convergência | HI com histórico completo de disponibilidades |
+| Resposta emocional ou agressiva | HI imediato |
+| "Já combinamos diretamente" | HI imediato |
+| Cancelamento pós-confirmação | HI + notifica ambos + cancela GCal |
+| 2x clarificação sem sucesso no mesmo round | HI |
+
+### Impacto na state machine
+
+O round é rastreado como campo de contexto (não estado separado) para evitar explosão de estados. Os estados existentes são reusados com o contexto de round como discriminador. Um novo estado terminal `RESCHEDULING_REQUESTED` pode ser adicionado para diferenciar HI por conflito de agenda vs HI por cancelamento.
+
+---
+
+## Delegação de Contato no Trigger
+
+Mentores ou founders podem ter assistentes executivas que gerenciam agendas. O Connect pode ter esse número cadastrado. A decisão de contatar diretamente ou via assistente é feita pelo AEE **antes** de disparar o fluxo — nunca mid-flow.
+
+### Extensão do trigger
+
+```
+POST /v1/schedule
+{
+  meeting_id:                    str,
+  donated_phone_number:          str,   # número direto do mentor
+  donated_contact_type:          "direct" | "via_assistant",  # novo
+  donated_assistant_phone:       str | None,                  # novo — obrigatório se via_assistant
+  received_phone_number:         str,   # número direto do founder
+  received_contact_type:         "direct" | "via_assistant",  # novo
+  received_assistant_phone:      str | None                   # novo
+}
+```
+
+### Comportamento
+
+- Workflow usa `assistant_phone` quando `contact_type = via_assistant`
+- Nenhuma lógica mid-flow: se assistente responde, o agente trata normalmente (EC-01)
+- AEE é responsável por validar o número no Connect antes de disparar
+- Founder que delega mid-flow (EC-25) não é tratado pelo agente — HI imediato
+
+---
+
+## EscalationService — Canal de Notificação AEE
+
+### Situação atual
+
+Hoje `HUMAN_INTERVITION_REQUIRED` é um estado silencioso. Nenhuma notificação chega ao AEE. Casos acumulam e só são descobertos por reclamação dos envolvidos (EC-36).
+
+### Design proposto
+
+`EscalationService` é um serviço simples de notificação — **não um agente LLM**. A decisão de canal é regra de configuração, não linguagem natural. LLM adicionaria latência, custo e ponto de falha sem valor.
+
+```python
+# src/core/config.py — novos campos
+ESCALATION_CHANNEL: Literal["whatsapp", "slack"] = "whatsapp"
+ESCALATION_WHATSAPP_PHONE: str | None = None  # número WhatsApp do AEE
+ESCALATION_SLACK_WEBHOOK: str | None = None   # webhook URL do canal Slack
+```
+
+### Payload de escalada (independente do canal)
+
+```
+Tipo de escalada : mentor_timeout | founder_rejected | agent_refused |
+                   no_convergence | cancelled_pre_confirm | cancelled_post_confirm | ...
+Mentor           : [nome] ([empresa])
+Founder          : [nome] ([empresa])
+Round atual      : N de MAX
+Último estado    : WAITING_DONATED_RESPONSE
+Disponibilidades : [resumo dos rounds — slots oferecidos e contra-propostas]
+Meeting ID       : [id — para AEE abrir no Connect]
+```
+
+### Canal WhatsApp
+
+Mensagem free-form para `ESCALATION_WHATSAPP_PHONE`. Funciona porque AEE é usuário ativo no número do agente (janela 24h geralmente aberta).
+
+### Canal Slack
+
+POST para `ESCALATION_SLACK_WEBHOOK` com payload formatado em markdown.
+
+### Chamada
+
+`EscalationService.notify(context, reason)` invocado em qualquer handler que transiciona para `HUMAN_INTERVITION_REQUIRED`. O `context` já contém toda a informação necessária (nome dos atores, meeting_id, rounds).
+
+### Evolução futura (Phase 3)
+
+- Multi-canal simultâneo (WhatsApp + Slack)
+- SLA timer: se AEE não responde em X horas, re-escalada para segundo contato
+- Fila de intervenções com UI no Connect
+- Priorização por tipo de escalada
