@@ -1,6 +1,9 @@
 # Agent Journey — Jornada dos Atores
 
-> Versão: 2.0 | Data: 2026-03-16
+> Versão: 2.1 | Data: 2026-03-16
+
+> **Para visualizar:** abra no GitHub (renderiza automaticamente)
+> **Para usar no Miro:** copie qualquer bloco `mermaid` → Miro → "+" → More → Mermaid → cole. O Miro converte em shapes editáveis.
 
 ---
 
