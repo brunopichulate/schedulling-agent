@@ -28,14 +28,23 @@
 
 - Minimum 2 time slots must be extracted from mentor's reply
 - Extraction is done by `SlotExtractorAgent` in natural language — no structured format required from mentor
-- If less than 2 slots can be extracted → `aguardando_intervencao_humana`
+- If 1 slot extracted → agent asks for more (up to `MAX_CLARIFICATIONS = 2` attempts per round)
+- If 0 slots extracted → same clarification logic
+- After `MAX_CLARIFICATIONS` failed attempts → `aguardando_intervencao_humana`
+- `clarification_count` resets to 0 on each successful extraction
 
 ## Founder Selection
 
 - Formatted slot options are presented to founder
 - Founder selects one via free-form reply
 - `ConfirmationExtractorAgent` confirms which slot was chosen
-- If confirmation is ambiguous → `aguardando_intervencao_humana`
+- If confirmation is ambiguous → agent asks again (up to `MAX_CLARIFICATIONS = 2` attempts) → `aguardando_intervencao_humana`
+- If founder **rejects all slots and offers counter-availability** AND `current_round < MAX_NEGOTIATION_ROUNDS`:
+  - `CounterAvailabilityExtractorAgent` extracts the founder's available windows
+  - Agent sends counter-proposal back to mentor (negotiation round N+1)
+  - State returns to `WAITING_DONATED_RESPONSE` with round context preserved
+- If founder rejects without offering alternatives → `aguardando_intervencao_humana`
+- `MAX_NEGOTIATION_ROUNDS = 2` (configurable via `settings`)
 
 ## Google Calendar Event
 
@@ -50,7 +59,11 @@
 
 ## Edge Cases → Human Intervention
 
-Any response that cannot be processed by agents routes to `aguardando_intervencao_humana`. Currently there is no notification or UI for this state — human intervention is manual. This will change in future iterations.
+Any response that cannot be processed by agents routes to `aguardando_intervencao_humana`. Currently there is no notification or UI for this state — human intervention is manual (EscalationService not yet implemented — see EC-36).
+
+**Escalation thresholds (implemented):**
+- `MAX_CLARIFICATIONS = 2` — after 2 failed extraction attempts in the same round, escalate
+- `MAX_NEGOTIATION_ROUNDS = 2` — after 2 full negotiation cycles without convergence, escalate
 
 ---
 
@@ -58,8 +71,6 @@ Any response that cannot be processed by agents routes to `aguardando_intervenca
 
 These need to be decided before Phase 3 implementation:
 
-- Timeout: how long to wait for mentor/founder reply before escalating?
-- Retry: should the agent re-send a reminder if no response?
+- Timeout: how long to wait for mentor/founder reply before escalating? (mechanism not yet implemented — conversations stall indefinitely — see EC-03)
 - Founder with multiple partners: who receives the message? All partners? Primary contact?
-- Mentor with executive assistant: does the assistant receive and reply on behalf?
 - What happens if the chosen slot becomes unavailable before the invite is sent?

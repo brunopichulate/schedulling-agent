@@ -8,10 +8,13 @@ from src.agents.main.meeting_agents import (
     slot_extractor_agent,
     confirmation_extractor_agent,
 )
+from src.agents.main.counter_availability_extractor_agent import counter_availability_extractor_agent
 from src.services.state_machine_service import (
     update_meeting_state,
     record_interaction_time,
     check_timeout,
+    update_clarification_count,
+    save_negotiation_round,
 )
 from src.workflows.meeting_shared.models import MeetingState, MeetingContext
 from src.workflows.meeting_shared.utils import (
@@ -32,11 +35,15 @@ from src.workflows.meeting_shared.messages import (
     build_human_intervention_message,
     build_already_confirmed_message,
     build_unexpected_state_message,
+    build_max_clarifications_message,
+    build_negotiation_counter_message,
 )
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 NO_RESPONSE_TIMEOUT_SECONDS = settings.no_response_timeout_seconds
+MAX_CLARIFICATIONS = 2
+MAX_NEGOTIATION_ROUNDS = 2
 
 def handle_init(context: MeetingContext, message: str, use_bold_asterisks: bool = True) -> Generator[Tuple[str, str], None, None]:
     slots = build_slot_suggestions(context.meeting_date_iso)
@@ -64,10 +71,20 @@ def handle_waiting_donated(context: MeetingContext, message: str, use_bold_aster
         yield (context.donated_phone, build_timeout_message("donated"))
         return
 
+    current_round = context.state_dict.get("current_round", 1)
+    founder_counter = context.state_dict.get("founder_counter_windows", [])
+    negotiation_context = ""
+    if current_round > 1 and founder_counter:
+        negotiation_context = (
+            f" NEGOTIATION ROUND {current_round}: Founder proposed availability in: "
+            f"{', '.join(founder_counter)}. Try to extract slots that fit these windows."
+        )
+
     enriched = (
         f"Base meeting_date: {context.meeting_date_iso}. "
         f"Today's date: {datetime.now().isoformat()}. "
         f"User Input: {message}"
+        f"{negotiation_context}"
     )
     _tracer = otel_trace.get_tracer("meeting-workflow")
     with propagate_attributes(session_id=context.user_id, user_id=context.user_id):
@@ -87,6 +104,7 @@ def handle_waiting_donated(context: MeetingContext, message: str, use_bold_aster
         return
 
     if selected_slots and len(selected_slots) >= 2:
+        update_clarification_count(context.user_id, 0)
         update_meeting_state(MeetingState.DONATED_SELECTED_SLOT.value, context.user_id, selection=selected_slots)
         update_meeting_state(MeetingState.WAITING_RECEIVED_RESPONSE.value, context.user_id)
         record_interaction_time(context.user_id)
@@ -104,9 +122,21 @@ def handle_waiting_donated(context: MeetingContext, message: str, use_bold_aster
         return
 
     if selected_slots and len(selected_slots) == 1:
+        clarification_count = context.state_dict.get("clarification_count", 0) + 1
+        if clarification_count >= MAX_CLARIFICATIONS:
+            update_meeting_state(MeetingState.HUMAN_INTERVITION_REQUIRED.value, context.user_id)
+            yield (context.donated_phone, build_max_clarifications_message())
+            return
+        update_clarification_count(context.user_id, clarification_count)
         yield (context.donated_phone, build_need_more_options_message())
         return
 
+    clarification_count = context.state_dict.get("clarification_count", 0) + 1
+    if clarification_count >= MAX_CLARIFICATIONS:
+        update_meeting_state(MeetingState.HUMAN_INTERVITION_REQUIRED.value, context.user_id)
+        yield (context.donated_phone, build_max_clarifications_message())
+        return
+    update_clarification_count(context.user_id, clarification_count)
     yield (context.donated_phone, build_unrecognized_options_message())
 
 def handle_waiting_received(context: MeetingContext, message: str, use_bold_asterisks: bool = True) -> Generator[Tuple[str, str], None, None]:
@@ -137,12 +167,48 @@ def handle_waiting_received(context: MeetingContext, message: str, use_bold_aste
     selected_option_index = parse_extracted(extracted, "selected_option_index", default=None)
 
     if is_rejected:
+        current_round = context.state_dict.get("current_round", 1)
+
+        counter_run = counter_availability_extractor_agent.run(message)
+        counter_extracted = counter_run.content
+        has_counter = parse_extracted(counter_extracted, "has_counter_proposal", default=False)
+        available_windows = parse_extracted(counter_extracted, "available_windows", default=[])
+
+        if has_counter and available_windows and current_round < MAX_NEGOTIATION_ROUNDS:
+            round_data = {
+                "round_number": current_round,
+                "founder_counter_windows": available_windows,
+            }
+            save_negotiation_round(
+                context.user_id,
+                new_round=current_round + 1,
+                counter_windows=available_windows,
+                round_data=round_data,
+            )
+            update_meeting_state(MeetingState.WAITING_DONATED_RESPONSE.value, context.user_id)
+            record_interaction_time(context.user_id)
+
+            windows_text = ", ".join(available_windows)
+            yield (
+                context.donated_phone,
+                build_negotiation_counter_message(
+                    context.donated_name, context.received_name, windows_text
+                ),
+            )
+            return
+
         update_meeting_state(MeetingState.RECEIVED_REJECTED.value, context.user_id)
         update_meeting_state(MeetingState.HUMAN_INTERVITION_REQUIRED.value, context.user_id)
         yield (context.received_phone, build_rejected_message("received", context.received_name))
         return
 
     if not selected_option_index or not isinstance(selected_option_index, int) or selected_option_index < 1 or selected_option_index > len(selected_slots):
+        clarification_count = context.state_dict.get("clarification_count", 0) + 1
+        if clarification_count >= MAX_CLARIFICATIONS:
+            update_meeting_state(MeetingState.HUMAN_INTERVITION_REQUIRED.value, context.user_id)
+            yield (context.received_phone, build_max_clarifications_message())
+            return
+        update_clarification_count(context.user_id, clarification_count)
         yield (context.received_phone, build_unrecognized_selection_message())
         return
 

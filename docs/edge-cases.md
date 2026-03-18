@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | EC-01 | Assistente executiva responde no lugar do mentor | 🟡 Médio | ✅ | MVP: aceitar e processar normalmente. Solução real: pré-trigger (ver `docs/architecture.md` → Delegação de Contato) |
 | EC-03 | Mentor não responde (timeout 48h) | 🔴 Crítico | ✅ | Follow-up 1x → HI. Mecanismo de timeout ainda não implementado — conversa trava indefinidamente |
-| EC-05 | Resposta ambígua ("qualquer manhã", "semana que vem") | 🟠 Alto | ✅ | Agente pede clarificação (limite 2x por round) → HI se persistir |
+| EC-05 | Resposta ambígua ("qualquer manhã", "semana que vem") | 🟠 Alto | ✅ | **Implementado.** `clarification_count` rastreado no Redis. Após `MAX_CLARIFICATIONS = 2` tentativas → HI. Contador reseta a cada round. |
 | EC-06 | Mentor envia áudio, imagem, sticker | 🟠 Alto | ✅ | Pede texto. Bug ativo: estado não avança após fallback — conversa trava |
 | EC-07 | Número do mentor desatualizado no Connect | 🟢 Baixo | ❌ | Limitação conhecida. Mensagem entregue à pessoa errada, sem detecção possível |
 | EC-10 | Mentor recusa interagir com o agente | 🟠 Alto | ❌ | HI imediato |
@@ -40,11 +40,11 @@
 | EC-10 | Founder recusa interagir com o agente | 🟠 Alto | ❌ | HI imediato |
 | EC-11 | Founder suspeita de phishing (número desconhecido) | 🔴 Crítico | ❌ | Prevenção pré-fluxo: AEE deve avisar founder via canal existente antes de o agente entrar em contato |
 | EC-23 | Founder responde "sim" ou "ok" sem especificar opção | 🔴 Crítico | ✅ | Extremamente comum no WhatsApp. Agente pede qual número da lista |
-| EC-24 | Founder rejeita todos os slots E oferece contra-disponibilidade | 🔴 Crítico | ✅ | Motor de Negociação: agente extrai disponibilidade do founder e retorna ao mentor com contra-proposta |
+| EC-24 | Founder rejeita todos os slots E oferece contra-disponibilidade | 🔴 Crítico | ✅ | **Implementado.** `CounterAvailabilityExtractorAgent` detecta contra-proposta → `save_negotiation_round()` → estado volta a `WAITING_DONATED_RESPONSE` com contexto de round. Limite: `MAX_NEGOTIATION_ROUNDS = 2`. |
 | EC-25 | Founder delega ao assistente mid-flow ("confirma com minha secretária, número X") | 🟠 Alto | ❌ | HI + AEE reconfigura contato. Solução real: pré-trigger (ver Delegação de Contato) |
 | EC-26 | Founder confirma com modificação ("opção 2 mas 30 min antes") | 🟡 Médio | ❌ | HI para AEE mediar. Agente não renegocia horário |
 | EC-27 | Founder escolhe por descrição em vez de número ("a de quinta") | 🟡 Médio | ✅ | ConfirmationExtractorAgent com bom prompt mapeia descrição → índice |
-| EC-28 | Founder envia só disponibilidade em vez de escolher da lista | 🟡 Médio | ✅ | Motor de Negociação: extrai disponibilidade e leva ao mentor |
+| EC-28 | Founder envia só disponibilidade em vez de escolher da lista | 🟡 Médio | ✅ | **Implementado.** Tratado pelo mesmo caminho de EC-24 — `CounterAvailabilityExtractorAgent` detecta `has_counter_proposal=true` mesmo sem rejeição explícita. |
 | EC-29 | Resposta emocional ou agressiva | 🟠 Alto | ❌ | HI imediato |
 | EC-30 | Founder responde DEPOIS de já estar em HI | 🟡 Médio | ❌ | Agente avisa que fluxo foi encerrado. AEE decide se reabre |
 | EC-40 | Founder cancela ANTES da confirmação | 🟠 Alto | ❌ | Notifica mentor + AEE → inicia remarcação ou encerra |
@@ -137,4 +137,7 @@ Ver `docs/architecture.md` para:
 
 ## Resolved Edge Cases
 
-*(nenhum ainda — mover casos aqui quando resolvidos com notas de implementação)*
+| # | Caso | Resolvido em | Notas de implementação |
+|---|---|---|---|
+| EC-24 | Founder rejeita todos os slots E oferece contra-disponibilidade | handlers.py · state_machine_service.py | `CounterAvailabilityExtractorAgent` detecta `has_counter_proposal` → `save_negotiation_round()` → loop de volta a `WAITING_DONATED_RESPONSE`. Limite: `MAX_NEGOTIATION_ROUNDS = 2`. |
+| EC-28 | Founder envia só disponibilidade em vez de escolher da lista | handlers.py | Mesmo caminho de EC-24 — `has_counter_proposal=true` mesmo sem rejeição explícita da lista. |

@@ -55,3 +55,22 @@ def build_already_confirmed_message() -> str:
 
 def build_unexpected_state_message(current_status: str) -> str:
     return f"Estado inesperado: `{current_status}`. Por favor, reinicie o fluxo."
+
+
+def build_max_clarifications_message() -> str:
+    return (
+        "Não consegui entender as respostas fornecidas. "
+        "O caso foi encaminhado para o time Endeavor, que entrará em contato em breve."
+    )
+
+
+def build_negotiation_counter_message(
+    donated_name: str, received_name: str, windows_text: str
+) -> str:
+    return (
+        f"Olá, {donated_name}! 👋\n\n"
+        f"{received_name} não pôde confirmar os horários sugeridos, mas tem disponibilidade em: "
+        f"{windows_text}.\n\n"
+        f"Você teria disponibilidade em alguma dessas janelas? "
+        f"Se sim, envie pelo menos 2 opções de horário."
+    )

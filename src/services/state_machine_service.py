@@ -25,7 +25,13 @@ class _MongoEncoder(json.JSONEncoder):
 
 
 # Redis client – shared across all processes (FastAPI + Celery workers)
-_redis = redis.from_url(settings.redis.URL, decode_responses=True)
+try:
+  _redis = redis.from_url(settings.redis.URL, decode_responses=True)
+  _redis.ping()
+except redis.ConnectionError:
+  import fakeredis
+  _redis = fakeredis.FakeRedis(decode_responses=True)
+  logger.warning("Redis unavailable — using in-memory FakeRedis (local dev only)")
 
 STATE_TTL_SECONDS = 60 * 60 * 24  # 24 hours
 
@@ -52,6 +58,10 @@ _EMPTY_STATE: Dict[str, Any] = {
   "received_phone": None,
   "selected_slot": None,
   "last_interaction_time": None,
+  "clarification_count": 0,
+  "current_round": 1,
+  "founder_counter_windows": [],
+  "negotiation_history": [],
 }
 
 
@@ -165,6 +175,33 @@ def check_timeout(user_id: str, seconds: int = 30) -> bool:
     return elapsed > seconds
   except (ValueError, TypeError):
     return False
+
+
+def update_clarification_count(user_id: str, count: int) -> None:
+  """Incrementa ou reseta o contador de clarificações sem alterar o TTL."""
+  state = _get_or_init_state(user_id)
+  state["clarification_count"] = count
+  _save(user_id, state)
+
+
+def save_negotiation_round(
+  user_id: str,
+  new_round: int,
+  counter_windows: list,
+  round_data: dict,
+) -> None:
+  """
+  Persiste os dados do round de negociação no Redis.
+  Não altera status — chame update_meeting_state separadamente para a transição de estado.
+  """
+  state = _get_or_init_state(user_id)
+  state["current_round"] = new_round
+  state["founder_counter_windows"] = counter_windows
+  history = state.get("negotiation_history", [])
+  history.append(round_data)
+  state["negotiation_history"] = history
+  state["clarification_count"] = 0
+  _save(user_id, state)
 
 
 def update_meeting_state(

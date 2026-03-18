@@ -57,13 +57,31 @@ INIT
                     └─► DONATED_SELECTED_SLOT
                           └─► WAITING_RECEIVED_RESPONSE  (slot options sent to founder)
                                 ├─► RECEIVED_NO_RESPONSE  ──► HUMAN_INTERVITION_REQUIRED
-                                ├─► RECEIVED_REJECTED     ──► HUMAN_INTERVITION_REQUIRED
+                                ├─► RECEIVED_REJECTED + no counter ──► HUMAN_INTERVITION_REQUIRED
+                                ├─► RECEIVED_REJECTED + counter (round < MAX)
+                                │     └─► WAITING_DONATED_RESPONSE  ◄─── negotiation loop
                                 └─► RECEIVED_CONFIRMED    (calendar invite created, flow done)
 ```
 
 Note: `HUMAN_INTERVITION_REQUIRED` is the actual state name in code (typo preserved for compatibility).
 
+The negotiation loop reuses `WAITING_DONATED_RESPONSE` with round context (`current_round`, `founder_counter_windows`) stored in Redis state. No new states needed — round is a context discriminator, not a state.
+
 State is persisted per phone number in MongoDB via `src/services/state_machine_service.py`.
+
+**Redis state fields (as of current implementation):**
+```python
+{
+  "status":                   str,   # current state name
+  "selected_slots":           list,
+  "selected_slot":            str | None,
+  "clarification_count":      int,   # resets on each successful slot extraction
+  "current_round":            int,   # negotiation round (starts at 1)
+  "founder_counter_windows":  list,  # availability windows from founder's counter-proposal
+  "negotiation_history":      list,  # list of round dicts for escalation summary
+  "last_interaction_time":    str | None,
+}
+```
 
 ## Component Interactions
 
@@ -94,6 +112,7 @@ State is persisted per phone number in MongoDB via `src/services/state_machine_s
 │  Machine    │           │  src/agents/main/              │
 │  (MongoDB)  │           │  SlotExtractorAgent            │
 └─────────────┘           │  ConfirmationExtractorAgent    │
+                          │  CounterAvailabilityExtractor  │
                           │  LLM: OpenAI GPT-4o-mini       │
                           │  Prompts: fetched from Langfuse│
                           └───────────────────────────────┘
@@ -150,6 +169,10 @@ Langfuse project: `endeavor-agents` (account: `web@endeavor`)
 ---
 
 ## Motor de Negociação (Vai-e-Vem)
+
+> **Status de implementação:** parcialmente implementado no MVP.
+> Em produção: counter-proposal detection, round tracking, negotiation loop.
+> Pendente: EscalationService, cancelamento pós-confirmação, `NegotiationRound` dataclass completo.
 
 O agente não é linear. Ele funciona como uma secretária: coleta disponibilidade de um lado, leva ao outro, e repete até encontrar um slot em comum ou decidir que precisa de ajuda humana.
 

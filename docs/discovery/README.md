@@ -37,7 +37,7 @@
 | 5 | Edge Case Taxonomy | Engineer + Researcher | [`05-edge-cases-deep.md`](05-edge-cases-deep.md) | ✅ |
 | 6 | Flow Mapping & Multi-Agent Routing | Engineer + PM | [`06-flow-map.md`](06-flow-map.md) | ✅ |
 | 7 | Success Metrics & Outcome Model | PM + Strategist | [`07-metrics.md`](07-metrics.md) | ✅ |
-| 8 | Full PRD | PM | `08-prd.md` | ⬜ |
+| 8 | Full PRD | PM | [`08-prd.md`](08-prd.md) | ✅ |
 
 ---
 
@@ -93,7 +93,7 @@
 
 ---
 
-### Stage 8 — Full PRD ⬜
+### Stage 8 — Full PRD ✅
 **Central question:** What are we building, for whom, and how do we know it worked?
-**Key outputs:** full scope (in/out/later), complete flow (happy path + all alternatives from Stage 6), acceptance criteria per feature, success metrics, open decisions.
-**Target deadline:** 31/05/2026
+**Key outputs:** full scope (in/out/later), 10 features with testable acceptance criteria, agent architecture table, success metrics with pilot approval criteria, 7 open decisions with owners.
+**File:** [`08-prd.md`](08-prd.md)

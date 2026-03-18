@@ -36,6 +36,11 @@ uv run celery -A src.core.celery flower
 # Test via Gradio UI (no WhatsApp needed)
 uv run ./chat.py
 
+# Simulate conversation flows for all edge cases (no external dependencies)
+python simular_fluxo.py              # list all scenarios
+python simular_fluxo.py <number>     # run specific scenario (e.g. 24)
+python simular_fluxo.py all          # run all scenarios
+
 # Lint and format
 uv run ruff check .
 uv run ruff check . --fix
@@ -111,7 +116,8 @@ ai/
 │   │
 │   ├── agents/
 │   │   └── main/
-│   │       ├── meeting_agents.py  # SlotExtractorAgent + ConfirmationExtractorAgent (Agno + GPT-4o-mini)
+│   │       ├── meeting_agents.py                     # SlotExtractorAgent + ConfirmationExtractorAgent (Agno + GPT-4o-mini)
+│   │       ├── counter_availability_extractor_agent.py  # CounterAvailabilityExtractorAgent — detects founder counter-proposals
 │   │       └── tools/
 │   │           └── meeting_tools.py  # Agno tools available to agents
 │   │
