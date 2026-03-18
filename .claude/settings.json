@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport subprocess, json, os\ncwd = os.environ.get('CLAUDE_PROJECT_DIR', '.')\nbranch = subprocess.run(['git','branch','--show-current'], capture_output=True, text=True, cwd=cwd).stdout.strip()\nstatus = subprocess.run(['git','status','--short'], capture_output=True, text=True, cwd=cwd).stdout.strip()\nctx = f'Git branch: {branch}' + (f'. Uncommitted changes:\\n{status}' if status else '. Working tree clean.')\nprint(json.dumps({'additionalContext': ctx}))\n\" 2>/dev/null || echo '{}'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, json\nd = json.load(sys.stdin)\nf = d.get('tool_input', {}).get('file_path', '')\nkey_files = ['state_machine_service', 'meeting_agents', 'whatsapp_workflow', 'handlers', 'meeting_tools', 'business-rules', 'edge-cases']\nif any(k in f for k in key_files):\n    name = f.replace('\\\\\\\\', '/').split('/')[-1]\n    print(f'Core file changed ({name}). Consider /evaluate for a full coherence check, or /update-docs to sync documentation.')\n\" 2>/dev/null",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

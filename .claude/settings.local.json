@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(python simular_fluxo.py all 2>&1 | tail -30)",
+      "Bash(find /c/Users/bruno.pichulate_ende/ai/tests -type f -name \"*.py\" 2>/dev/null | head -20)"
+    ]
+  }
+}
